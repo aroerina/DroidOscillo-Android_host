@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2009 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:weightSum="1"
+    tools:context=".USBOscilloscopeHost" >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:orientation="horizontal" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <ImageView
+                android:id="@+id/img_connect"
+                android:layout_width="@dimen/fps_text_width"
+                android:layout_height="20dp"
+                android:src="@drawable/disconnect" />
+
+            <TextView
+                android:id="@+id/text_framerate"
+                android:layout_width="@dimen/fps_text_width"
+                android:layout_height="wrap_content"
+                android:background="@layout/simpleframe"
+                android:gravity="left"
+                android:text="FPS"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="12dp"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_h_trigger"
+                android:layout_width="@dimen/trigger_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="HT:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#55FF55"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/textVtrigger"
+                android:layout_width="@dimen/trigger_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="VT:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#FF5555"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_bias"
+                android:layout_width="@dimen/ps_text_width"
+                android:layout_height="wrap_content"
+                android:text="PS:"
+                android:textColor="#00FFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_trigger_mode"
+                android:layout_width="@dimen/ps_text_width"
+                android:layout_height="wrap_content"
+                android:text="@string/trigger_mode"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="normal" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_timescale"
+                android:layout_width="@dimen/division_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="Td:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_voltscale"
+                android:layout_width="@dimen/division_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vd:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_vpp"
+                android:layout_width="@dimen/vpp_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vpp:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_freq"
+                android:layout_width="@dimen/vpp_text_width"
+                android:layout_height="wrap_content"
+                android:text="Freq"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_vrms"
+                android:layout_width="@dimen/vrms_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vrms:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_mean"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mean:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left"
+            android:gravity="left"
+            android:orientation="vertical" >
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" >
+
+                <ImageView
+                    android:id="@+id/img_trigger"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/slope_up" />
+
+                <ImageView
+                    android:id="@+id/img_range"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginLeft="8dp"
+                    android:src="@drawable/over_range_in" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/text_run_stop"
+                android:layout_width="@dimen/run_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:background="@layout/simpleframe"
+                android:gravity="center_horizontal"
+                android:text="@string/run"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#00FF00"
+                android:textSize="@dimen/default_text_size" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+
+        <jp.limepulse.USBOscilloscopeHost.GraphView
+            android:id="@+id/Graph"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="2dp"
+            android:layout_marginBottom="2dp"
+            android:layout_marginRight="4dp" />
+
+        <ScrollView
+            android:id="@+id/scrollView1"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:paddingLeft="6dp" >
+
+        <LinearLayout android:layout_width="wrap_content"
+             android:layout_height="match_parent"
+              android:orientation="horizontal"
+              android:paddingRight="4dp"
+            >
+
+            <LinearLayout android:layout_width="@dimen/button_width"
+                android:layout_height="fill_parent"
+                android:orientation="vertical">
+
+                <ToggleButton
+                    android:id="@+id/tbtn_stop"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="ToggleButton"
+                    android:textOff="Stop"
+                    android:textOn="Stop"
+                    android:textSize="@dimen/button_text_size"  />
+
+                <Button android:id="@+id/trig_mode_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="@string/trigger_mode_btn_text"
+                    android:textSize="@dimen/button_text_size"
+                />
+
+                <ToggleButton android:id="@+id/tbtn_dccut"
+                     android:layout_width="match_parent"
+                     android:layout_height="@dimen/button_height"
+                     android:text="ToggleButton"
+                     android:textOff="DC CUT"
+                     android:textOn="DC CUT"
+                    android:textSize="@dimen/button_text_size"
+                />
+
+                <ToggleButton
+                    android:id="@+id/tbtn_expand"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="Expand"
+                    android:textOff="Expand"
+                    android:textOn="Expand"
+                    android:textSize="@dimen/button_text_size" />
+
+                <ToggleButton
+                    android:id="@+id/tbtn_x10"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="ToggleButton"
+                    android:textOff="Probe x10"
+                    android:textOn="Probe x10"
+                    android:textSize="@dimen/button_text_size"  />
+
+                <Button
+                    android:id="@+id/btn_edge"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="Slope"
+                    android:textSize="@dimen/button_text_size"  />
+
+ 				<Button android:id="@+id/btn_calib" android:layout_width="match_parent" android:layout_height="@dimen/button_height" android:text="Calib"
+                    android:textSize="@dimen/button_text_size"  />
+
+                <Button
+                    android:id="@+id/btn_bias_calib"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="BiasCalib"
+                    android:textSize="@dimen/button_text_size"
+                    android:visibility="visible" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="@dimen/button_width"
+                android:layout_height="fill_parent"
+                android:orientation="vertical" >
+
+                 <Button
+                     android:id="@+id/btn_zoomplus"
+                     android:layout_width="match_parent"
+                     android:layout_height="@dimen/button_height"
+                     android:drawableRight="@drawable/zoom_in_w"
+                     android:text="@string/td_plus"
+                     android:textSize="@dimen/button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_zoomminus"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:drawableRight="@drawable/zoom_out_w"
+                    android:text="@string/td_plus"
+                    android:textSize="@dimen/button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_vscale_minus"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:drawableRight="@drawable/zoom_in_w"
+                    android:text="Volt"
+                    android:textSize="@dimen/button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_vscale_plus"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:drawableRight="@drawable/zoom_out_w"
+                    android:text="Volt"
+                    android:textSize="@dimen/button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_autoset"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="Autoset"
+                    android:textSize="@dimen/button_text_size" />
+
+                                <Button android:id="@+id/btn_setzero"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="Set 0"
+                    android:textSize="@dimen/button_text_size"  />
+                <Button
+                    android:id="@+id/btn_setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="Setting"
+                    android:textSize="@dimen/button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_calib_value_reset"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:text="CVReset"
+                    android:textSize="@dimen/button_text_size"
+                    android:visibility="visible" />
+
+            </LinearLayout>
+        </LinearLayout></ScrollView>
+
+
+    </LinearLayout>
+
+</LinearLayout>

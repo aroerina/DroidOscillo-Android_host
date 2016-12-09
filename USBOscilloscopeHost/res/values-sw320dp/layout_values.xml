@@ -1,0 +1,14 @@
+<!--一文字あたり9dpほど -->
+    <resources>
+        <dimen name="default_text_size">12sp</dimen>
+        <dimen name="fps_text_width">36dp</dimen>
+        <dimen name="trigger_text_width">73dp</dimen>
+        <dimen name="ps_text_width">76dp</dimen>
+        <dimen name="division_text_width">65dp</dimen>
+        <dimen name="vpp_text_width">94dp</dimen>
+        <dimen name="vrms_text_width">94dp</dimen>
+        <dimen name="run_text_width">34dp</dimen>
+        <dimen name="button_width">102dp</dimen>
+        <dimen name="button_height">30dp</dimen>
+        <dimen name="button_text_size">15sp</dimen>
+    </resources>
