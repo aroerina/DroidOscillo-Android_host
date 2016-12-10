@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2009 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package jp.limepulse.USBOscilloscopeHost;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +27,6 @@ import android.os.Vibrator;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -76,7 +59,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 	// decimal
 	private static final int USB_DEVICE_VID = 8137;		// NXP Vendor ID 0x1FC9
-	private static final int USB_DEVICE_PID = 33128;	// PID 0x8168
+	private static final int USB_DEVICE_PID = 33128;	// DroidOscillo's PID 0x8168
 
 	//
     // USB Oscilloscope Configuration Message
@@ -142,7 +125,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     public static final int TGMODE_NORMAL = 1;
     public static final int TGMODE_FREE = 	2;
     public static final int TGMODE_SINGLE = 3;
-    public static final int TGMODE_SINGLE_FREE = 4;		// Autosetモード用
+    public static final int TGMODE_SINGLE_FREE = 4;		// for Autoset mode
 
     public static final int TGMODE_DEVICE_STOP = 	0;
     public static final int SAMPLE_MAX = 4095;
@@ -156,34 +139,29 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     public static final int M4_FIRM_WRITEADDR = 	0x10000000;
     public static final int M4_FIRM_ENTRYADDR = 	0x1000013c;
     public static final int M0APP_FIRM_WRITEADDR = 	0x10010000;
-    public static final int M0APP_FIRM_ENTRYADDR = 	0x100100c0;	//mapを確認すること
+    public static final int M0APP_FIRM_ENTRYADDR = 	0x100100c0;	//Check LPCXpresso MAPfile
 
     //
-    //	縦軸用
+    //	Vertical axis
     //
-    //1.045 0.240
-
     public static final double ADC_VREF_VOLTAGE = 0.506;
-    public static final double GRAPH_FULLSCALE_VOLTAGE = 0.72;		// 画面に表示される範囲の電圧
+    public static final double GRAPH_FULLSCALE_VOLTAGE = 0.72;		// The voltage of a range displayed by a screen
     public static final double TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP = 0.8;
-    //public static final double ADC_MAX_CALIB_VOLTAGE = 50 * 0.001;	// mV
-    //public static final double ADC_INPUT_MAX_VOLTAGE = 0.8 + ADC_MAX_CALIB_VOLTAGE;		// ADC入力最大電圧
-    public static final double ADC_PER_DIV = GRAPH_FULLSCALE_VOLTAGE / 8.0;		// 1div あたりの電圧
+    public static final double ADC_PER_DIV = GRAPH_FULLSCALE_VOLTAGE / 8.0;		// Voltage per 1div
     public static final int TYPICAL_FULLSCALE_MAX_VAL = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP));
 
     public static final double TYPICAL_ONE_LSB_VOLTAGE = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP / SAMPLE_MAX;	// 0.195mV
-    //public static final int FS_BOTTOM = (SAMPLE_MAX - normal_graph_fullscale) / 2;
-    public static final double ADC_MAX_VOLTAGE_DROP_AT_80MSPS = 0.99;		// 80Msps時にADC入力抵抗が低まるので補正
-    public static final double OPAMP_FEEDBACK_FIX_RATIO = 0.975;		// 5V 200mV　以外のレンジの時のADC入力幅の補正
+    public static final double ADC_MAX_VOLTAGE_DROP_AT_80MSPS = 0.99;		// calibration value for 80Msps input impedance down
+    public static final double OPAMP_FEEDBACK_FIX_RATIO = 0.975;			// ADC input range calibration value except 5V,200mV/div
 
     private int highdiv_input_calib_voltage,lowdiv_input_calib_voltage;	// 1LSB = 1mV
     private double adc_max_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP;
     private double one_lsb_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP / SAMPLE_MAX;
     private int normal_graph_fullscale = TYPICAL_FULLSCALE_MAX_VAL;
     private int normal_graph_min = (SAMPLE_MAX - TYPICAL_FULLSCALE_MAX_VAL) / 2;
-    // Voltscale 8 用フルスケール
+    // Voltscale 8 full scale value
     public int vs8_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP) * 0.5);
-    // Voltscale 9 用フルスケール
+    // Voltscale 9 full scale value
     public int vs9_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP) * 0.25);
     private double g_vpos_max,g_vpos_min;
     private double opamp_feedback_fix_ratio = 1.0;
@@ -196,8 +174,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     public static final double bias_upper_VOLTAGE = 1.5;
     public static final double bias_lower_VOLTAGE = -0.484;
     public static final double BIAS_CENTER_VOLTAGE = (BIAS_FULLSCALE_VOLTAGE / 2.0) + bias_lower_VOLTAGE;
-    public static final double TYPICAL_BIAS_LSB_VOLTAGE = BIAS_FULLSCALE_VOLTAGE / BIAS_MAX_REG_VALUE;	// 0.5mVぐらい
-	// ADR VREFとバイアス出力中点に生じるズレ分のDACレジスタ値
+    public static final double TYPICAL_BIAS_LSB_VOLTAGE = BIAS_FULLSCALE_VOLTAGE / BIAS_MAX_REG_VALUE;	// maybe 0.5mV
+	// DAC register value difference of ADC Vref voltage center
     public static final int BIAS_NORMAL_OFFSET_VALUE = (int)((ADC_VREF_VOLTAGE - BIAS_CENTER_VOLTAGE) / TYPICAL_BIAS_LSB_VOLTAGE);
     public static final int TYPICAL_BIAS_FS_VALUE = (int)(BIAS_MAX_REG_VALUE * (GRAPH_FULLSCALE_VOLTAGE / BIAS_FULLSCALE_VOLTAGE));
     public static final int TYPICAL_BIAS_BOTTOM = ((BIAS_MAX_REG_VALUE - TYPICAL_BIAS_FS_VALUE ) / 2) - BIAS_NORMAL_OFFSET_VALUE;			// 1310
@@ -207,15 +185,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     public static final double VT_EXPAND_RATIO = 2.0;
     public static final double BIAS_EXPAND_RATIO = 3.0;
 
-    private int highdiv_opa_diff,lowdiv_opa_diff;		// 増幅率1倍→10倍にしたときのADCに現れるDC誤差
+    private int highdiv_opa_diff,lowdiv_opa_diff;		// DC amp error at change opeamp amplitude  1x -> 10x
     private int[] opamp_offset_calib_value_list = new int[NUM_VOLTSCALE];
-    private int bias_center,bias_lower,bias_upper,normal_bias_center,normal_bias_lower,normal_bias_upper;
-    private int vs8_bias_upper_value,vs9_bias_upper_value,vs8_bias_lower,vs9_bias_lower;;
+    private int bias_center,bias_lower,bias_upper,normal_bias_lower,normal_bias_upper;
     private double g_bias_pos_max,g_bias_pos_min;
-    private double opa_fix_bias_lower,opa_fix_bias_upper;		// フィードバック回路の誤差を修正したバイアスTOP　BOTTOM値
-    public static final int BIAS_DROP_CALIBVAL_AT_80MSPS = 0;		// 80Msps時にADC入力抵抗が低まるので補正
 
-    // shared preferences key
+
+    // shared preferences keys
 
     private static final String KEY_TRIGGER_MODE = "tmode";
     private static final String KEY_TRIGGER_SLOPE = "tslope";
@@ -249,21 +225,19 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     static final String [] VOLT_SCALE_LIST = new String[NUM_VOLTSCALE];
     static final String [] VOLT_SCALE_LIST_X10 = new String[NUM_VOLTSCALE];
 
-    static final double [] TYPICAL_AMP_ERROR = new double[NUM_VOLTSCALE];	// 入力増幅回路の標準エラー率
+    static final double [] TYPICAL_AMP_ERROR = new double[NUM_VOLTSCALE];	// Typical input circuit dc error ratio
     static final double [] TIME_CONVERT_LIST = new double[NUM_TIMESCALE];
     static final double [] FULLSCALE_VOLTAGE_LIST  = new double[NUM_VOLTSCALE];
 
-	//private UsbDevice device;
 	private UsbManager mUsbManager;
 	private USBBroadcastReceiver mUsbReceiver;
 	UsbReceiveThread ReceiveThread;
 
 	private UsbInterface intf;
 	private UsbEndpoint endPointRead;
-	private UsbEndpoint epw_Msg;	//Message 送信用
-	private UsbEndpoint epw_Firm;	//Firmware　書き込み用
+	private UsbEndpoint epw_Msg;	//for message transmit endpoint
+	private UsbEndpoint epw_Firm;	//for firmware write endpoint
 	private UsbDeviceConnection deviceConnection;
-	//private int EpInPacketSize;
 	private int EpOutPacketSize;
 	private int epw_FirmPacketSize;
 	private Timer SendTimer;
@@ -276,7 +250,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 	Vibrator vibrator;
 
-	// Oscilloscope setting
+	// Oscilloscope settings
 	private int triggerMode,verTriggerValue;
 	private boolean run_status = true,dc_cut,triggerSlopeUp = true,x10Mode,expand;
 	private boolean calibration = false;
@@ -284,8 +258,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	private int timescale,voltscale,graph_fullscale,graph_min;
 
 	private double proveRatio = 1.0;
-	//g_bias_pos,g_vpos : 0がグラフ一番下0.5が中心1が一番上の位置
-	//g_hpos : 0が中心-1がグラフ左端1がグラフ右端
+	//g_bias_pos,g_vpos : 0 is the bottom of the graph 0.5, the center 1 is the highest position
+	//g_hpos : 0 is the center. -1 is the left edge of the graph. 1 is the right end of the graph
 	private double g_bias_pos,g_vpos,g_hpos;
     private GraphWave wave;
 
@@ -325,7 +299,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	TIME_CONVERT_LIST[0] =  0.000001;
     	TIME_CONVERT_LIST[1] =  TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[2] =  TIME_CONVERT_LIST[0];
-        TIME_CONVERT_LIST[3] =  TIME_CONVERT_LIST[0];	// 0~5まではサンプルレートは同じ
+        TIME_CONVERT_LIST[3] =  TIME_CONVERT_LIST[0];	// timescale 0~5 are same samplerate(80Msps)
         TIME_CONVERT_LIST[4] =  TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[5] =  TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[6] =  0.0000025;
@@ -358,7 +332,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         VOLT_SCALE_LIST[8] = "10m"; // xx.x m
         VOLT_SCALE_LIST[9] = "5m";  // xx.x m
 
-        // 増幅段の誤差
+        // Error ratio at amplitude circuit
         TYPICAL_AMP_ERROR[0] = 1.0233;	//5V
         TYPICAL_AMP_ERROR[1] = 1.0246;	//2V
         TYPICAL_AMP_ERROR[2] = 0.9906;	//1V
@@ -401,7 +375,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	if(D) Log.i(TAG, "-- ON CREATE --");
         super.onCreate(savedInstanceState);
 
-        // 前回終了時にセーブした値をロード
+        // Load value saved at last exit
 
     	sharedData = getSharedPreferences("DataSave", Context.MODE_PRIVATE);
     	editor = sharedData.edit();
@@ -464,13 +438,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         calibration_btn = (Button)findViewById(R.id.btn_calib);
 
 
-        if(D==false){	// リリース時にボタンを隠す
+        if(D==false){	// Hide debug button if release build
         	btn_test1.setVisibility(View.GONE);
         	btn_test2.setVisibility(View.GONE);
         	calibration_btn.setVisibility(View.GONE);
         	btn_setting.setVisibility(View.GONE);
 
-        	scview.computeScroll();		// 表示を更新
+        	scview.computeScroll();		// Update UI
         } else {
             btn_test1.setOnClickListener(this);
             btn_test2.setOnClickListener(this);
@@ -515,10 +489,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		Intent intent = getIntent();
 		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 		if(device != null){
-			mUsbReceiver.onReceive(this, intent);			// アプリが起動していない状態でデバイスが接続されてインテントから起動する時
+			mUsbReceiver.onReceive(this, intent);			// When launch from USB device connection intent
 		} else {
 
-			// アイコンをクリックして起動した時にすでにデバイスが接続されているか調べる
+			// Check if the device is already connected when launching from the drawer
 			HashMap<String,UsbDevice> deviceList = mUsbManager.getDeviceList();
 			Iterator<UsbDevice> deviceIterator  = deviceList.values().iterator();
 			while(deviceIterator.hasNext()){
@@ -530,11 +504,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			}
 		}
 
-		if(isConnected == false){		// setDeviceが呼ばれなかったら
-			setParameters();			// テキスト、ポジションセット
+		if(isConnected == false){		// If not called setDevice();
+			setParameters();
 		}
 
-		//ボタン状態セット
+		//Botton status set
 		tbtn_x10.setChecked(x10Mode);
 		if(x10Mode == true){
 			proveRatio = 10.0;
@@ -549,7 +523,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		Log.d("DEBUG","Width->" + dpWidth + ",Height=>" + dpHeight);
 
 
-		// 1秒ごとに実行するタイマー
+		// Timer to run every second
 		new Timer().scheduleAtFixedRate(new TimerTask(){
 			public void run(){
 				mHandler.post(new Runnable(){
@@ -585,7 +559,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 				if(D) Log.i(TAG, "USBBroadcastReceiver ON RECEIVE");
 
-				if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {		// アプリが起動している時にデバイスが接続されたら
+				if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {		// When the device is connected when the application is running
 					if(D) Log.i(TAG, "ACTION_USB_DEVICE_ATTACHED");
 
 					UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
@@ -595,7 +569,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 						return;
 					}
 
-					if(device.getProductId() != USB_DEVICE_PID || device.getVendorId() != USB_DEVICE_VID){	// VID PID 確認
+					if(device.getProductId() != USB_DEVICE_PID || device.getVendorId() != USB_DEVICE_VID){	// Confirm VID and PID
 						Log.e(TAG, "incorrect usb device");
 						return;
 					}
@@ -603,7 +577,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 					setDevice(device);
 				}
 
-				if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {		// 起動している時にデバイスが切断されたら
+				if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {		// If the device is disconnected while it is running
 					Log.i(TAG, "device disconnected");
 					if(ReceiveThread != null){
 						isConnected = false;
@@ -614,7 +588,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 				}
 
 
-				//USB 接続許可インテントを受け取る
+				// Receive USB connection permeation intent
 		        if (ACTION_USB_PERMISSION.equals(action)) {
 		        	if(D) Log.i(TAG, "ACTION_USB_PERMISSION");
 		            synchronized (this) {
@@ -637,13 +611,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		}
 
 
-	// 指定の桁をbyteで返す
-	// digit: 上位バイト=1  下位バイト=0
+	// Integer to 1byte
+	// digit select: 0~4
 	private byte int_to_byte(int i,int digit) {
 		return (byte)((i >> (digit * 8) ) & 0xFF);
 	}
 
-	// 2byteを結合して16bitの符号付き整数をintで返す
+	// 2byte to half word(16bit)
 	private int byte_to_halfword(byte upper,byte lower){
 		return (((int)upper) << 8) | ((int)lower & 0xff);
 	}
@@ -652,13 +626,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 			if(D)Log.d(TAG, "SET DEVICE");
 
-			if(mUsbManager.hasPermission(device)==false){	// パーミッション確認
+			if(mUsbManager.hasPermission(device)==false){	// Check USB connect permeation
 				Log.e(TAG, "DEVICE has no parmission!");
 //				mUsbManager.requestPermission(device, mPermissionIntent);
 //				return;
 			};
 			//
-			//	デバイス初期化
+			//	device initialize
 			//
 
 			deviceConnection = mUsbManager.openDevice(device);
@@ -698,12 +672,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			epw_FirmPacketSize = epw_Firm.getMaxPacketSize();
 
 			//
-			//		オシロスコープセッティング開始
+			//		Start oscilloscope setting
 			//
-			// 接続アイコンを緑色に
+
+			// Change connection icon green
 			img_connect.setImageResource(R.drawable.connected);
 
-			// ファームウェア送信
+			// Firmware transmit
 			Resources res = getResources();
 			if(D)Log.d(TAG,"Send firmware");
 			if(D)Log.d(TAG, "M4 firmware transfer start.");
@@ -713,14 +688,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			sendFirmware(M0APP_FIRM_WRITEADDR,res.openRawResource(R.raw.m0app),M0APP_FIRM_ENTRYADDR);
 
 			byte[] ReadBuffer = new byte[endPointRead.getMaxPacketSize()];
-//			while(true){	// コンフィグ終了待機){
-//				deviceConnection.bulkTransfer(endPointRead, ReadBuffer,1, 1000);
-//				if(ReadBuffer[0]==(byte)43)break;
-//			}
 
 			// I2C EEPROM READ
-			sendMessage(MESSAGE_EEPROM_PAGE_READ,16);		//EEPROM データシーケンシャルリードリクエスト
-			deviceConnection.bulkTransfer(endPointRead, ReadBuffer,16, 250);	//EEPROM データ受信
+			sendMessage(MESSAGE_EEPROM_PAGE_READ,16);		//EEPROM sequential read request
+			deviceConnection.bulkTransfer(endPointRead, ReadBuffer,16, 250);	//Receive EEPROM data
 
 			// page 0
 			int i=0;
@@ -732,7 +703,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 		    // page 1
 		    normal_bias_upper		 = byte_to_halfword(ReadBuffer[8],ReadBuffer[9]);
-		    normal_bias_center		 		 = byte_to_halfword(ReadBuffer[10],ReadBuffer[11]);
+		    bias_center				 = byte_to_halfword(ReadBuffer[10],ReadBuffer[11]);
 		    normal_bias_lower		 = byte_to_halfword(ReadBuffer[12],ReadBuffer[13]);
 
 		    if(D){
@@ -761,7 +732,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	        setupBias();
 
 			//
-			// オシロスコープ初期値コンフィグ
+			// Oscilloscope configuration value set
 			//
 	        setParameters();
 
@@ -777,14 +748,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			isConnected = true;
 
 			autoModeTask = new AutoModeTimerTask();
-			new Timer().scheduleAtFixedRate(autoModeTask,0,10L);	// 10msごとに実行
+			new Timer().scheduleAtFixedRate(autoModeTask,0,10L);	// Process per 10ms
 
 		}
 
-	// オシロスコープ設定値セット
+	// Oscilloscope configration
 	private void setParameters(){
-		setTimescale();		// setHTrigger() も呼ばれる
-		setVoltscale(true);	// setBias() も呼ばれる
+		setTimescale();		// also call setHTrigger()
+		setVoltscale(true);	// also call setBias()
 		setTriggerMode();
 		setTriggerSlope();
 		setVTrigger(true);
@@ -797,27 +768,27 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		int file_size = 0;
 
 		try {
-			file_size = bin.available();				// ファイルサイズ取得
+			file_size = bin.available();				// get firmware binary file size
 
-			//先頭1~4バイトにリトルエンディアンで書き込みアドレスを記述
+			//set write address 1~4byte
 
 			for(int i=0;i<4;i++){
 				buff[i] = (byte)(writeaddr>>(i*8) & 0xff);
 			}
 
-			//先頭4~8バイトにリトルエンディアンでファイルサイズを記述
+			//set firmware binary size 5~8byte
 			for(int i=0;i<4;i++){
 				buff[4+i] = (byte)(file_size>>(i*8) & 0xff);
 			}
 
-			//先頭9~12バイトにリトルエンディアンで実行アドレスを記述
+			//set entry point address 9~12byte
 			for(int i=0;i<4;i++){
 				buff[8+i] = (byte)(entryaddr>>(i*8) & 0xff);
 			}
 
 			int IsFinished = bin.read(buff, 12, epw_FirmPacketSize-12);
 
-			// ファイルの最後までパケット送信
+			// Packet transmit up to end of file
 			while(IsFinished > 0){
 				int ret;
 				ret = deviceConnection.bulkTransfer(epw_Firm, buff, epw_FirmPacketSize, 100);
@@ -832,8 +803,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		}
 	}
 
-
-	// キャリブレーション値を読み込んで電圧軸セットアップ
+	//
+	// Read calibration value and setup vertical axis
+	//
     private void setupVerticalAxis(){
     	if(voltscale < VOLTSCALE_200MV){
     		adc_max_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP + ((double)highdiv_input_calib_voltage / 1000);
@@ -842,7 +814,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	}
     	adc_max_voltage = adc_max_voltage / TYPICAL_AMP_ERROR[voltscale];
 
-    	if(timescale <= 5){		// 80Msps の時は入力レンジが狭まるので補正
+    	if(timescale <= 5){		// for input impedance down at 80Msps
     		adc_max_voltage = adc_max_voltage * ADC_MAX_VOLTAGE_DROP_AT_80MSPS;
     	}
 
@@ -867,7 +839,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		}
     }
 
-    //キャリブレーション値を読み込んでバイアスを調整
+    //
+    //Read calibration value and setup bias(position)
+    //
     private void setupBias(){
 
 
@@ -896,19 +870,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			bias_lower = normal_bias_lower / 4 ;
 			bias_upper = normal_bias_upper / 4;
 		}
-
-    	if(timescale <= 5){		// 80Msps の時は入力レンジが狭まるので補正
-    		bias_center = normal_bias_center + BIAS_DROP_CALIBVAL_AT_80MSPS;
-//    		bias_lower = (int)(bias_lower * ADC_MAX_VOLTAGE_DROP_AT_80MSPS);
-//    		bias_upper = (int)(bias_upper * ADC_MAX_VOLTAGE_DROP_AT_80MSPS);
-    	} else {
-    		bias_center = normal_bias_center;
-    	}
     }
 
 
 
-    // オートモード時のトリガーがかからなかった時のタイマー
+    //
+    // Timer for auto mode not triggered
+    //
     private volatile int autoTime = 0;
     public class AutoModeTimerTask extends TimerTask {
     	public void run(){
@@ -921,7 +889,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     		}
 
 
-    		// 一定時間経過してトリガーを検出しなかったらFREEモードにする
+    		// If a trigger is not detected after a lapse of a certain time, the FREE mode is set
     		if(autoTime > 30){	// 10ms * 30 = 300ms
     			sendMessage(MESSAGE_RUNMODE,TGMODE_FREE);
     			endAutoModeNormal();
@@ -955,7 +923,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 		@Override
 		public void run(){
-			// Acknowledgeパケット
+			// Acknowledge packet
 			SendBuffer = new byte[EpOutPacketSize];
         	SendBuffer[0] = MESSAGE_DATA_RECEIVED;
 
@@ -971,15 +939,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         		EndConnection();
         	}
 
-        	g_wave = new double[DEFAULT_SAMPLE_LENGTH];		// 正規化したサンプル
-        	lawSamples = new int[DEFAULT_SAMPLE_LENGTH];		// 受信したサンプルをそのまま格納する
+        	g_wave = new double[DEFAULT_SAMPLE_LENGTH];		// normalizing samples (0~1)
+        	lawSamples = new int[DEFAULT_SAMPLE_LENGTH];	// law value samples
 
 
         	//
         	//		main loop
         	//
         	while (deviceConnection != null && endPointRead != null && isConnected) {
-        		//int t_sample_length = sampleLength;	// sampleLength をホールド
 
         		if (inRequest.queue(ReceiveBuffer, BUFFER_SIZE) == true) {
 
@@ -1004,19 +971,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         			lawSamples[i] = (int) ReceiveBuffer.getShort();
         		}
 
-        		// グラフ高さを１としたデータに変換
+        		// Convert to data with graph height set to 0~1
         		for(int i=0;i< sampleLength;i++){
         			g_wave[i] = (double)(lawSamples[i] - graph_min) / graph_fullscale;	// 範囲を狭める
-
-//        			if(g_wave[i] < 0){	// クリップ処理
-//        				g_wave[i] = 0;
-//        			} else if(g_wave[i] > 1.0){
-//        				g_wave[i] = 1.0;
-//        			}
-
         		}
 
-        		wave =  new GraphWave(g_wave);		// 解析
+        		wave =  new GraphWave(g_wave);		// wave analysis
 
     			mHandler.post(new Runnable(){
     				public void run(){
@@ -1051,23 +1011,23 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 		private void drawGraph(){
 
-			mGraph.setWave(wave.samples,sampleLength); 	//画面描画
+			mGraph.setWave(wave.samples,sampleLength); 	// draw graph
 
     		if(triggerMode == TGMODE_AUTO && run_status==true){	// if Auto mode
 
-    			// トリガー検出
+    			// Trigger detection
 
     			boolean lower = !triggerSlopeUp;
     			boolean triggerDetect = false;
         		for(int i=0;i<sampleLength;i++){
-    				if(wave.samples[i] >= g_vpos){	// サンプル値はトリガーを上回る
+    				if(wave.samples[i] >= g_vpos){	// Sample value exceeds trigger
     					if(triggerSlopeUp && lower){
     						triggerDetect = true;
     						break;
     					}
 
     					lower = false;
-    				} else{							// サンプル値はトリガーを下回る
+    				} else{							// Sample value is less than trigger
     					if(!triggerSlopeUp && !lower){
     						triggerDetect = true;
     						break;
@@ -1084,13 +1044,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 					if(autoModeNormal == false){	// AUTO FREE
 						autoModeNormal = true;
-						sendMessage(MESSAGE_RUNMODE,TGMODE_NORMAL);	// NORMALモードにする
+						sendMessage(MESSAGE_RUNMODE,TGMODE_NORMAL);	// set NORMAL mode
 					} else {						// AUTO NORMAL
-						autoModeTask.timeReset();	// タイマーカウントリセット
+						autoModeTask.timeReset();	// Timer counter reset
 					}
         		}
-    		} else if(triggerMode == TGMODE_SINGLE){		// SINGLE モード
-    			runModeSetStop();	// デバイス側では内部的に勝手に変わるので送信する必要は無い
+    		} else if(triggerMode == TGMODE_SINGLE){		// SINGLE mode
+
+    			// On the device side, since it will change freely internally, there is no need to send runninng mode change
+    			runModeSetStop();
+
     			tbtn_stop.setChecked(true);
     			if(D)Log.d(TAG, "Stop botton set cheched");
     		}
@@ -1103,8 +1066,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	}
 
     private class GraphWave {
-    	double samples[];			// graph全体を１としたサンプル
-    	double max=0,min=0,vpp=0;	// graph全体を1とした際の値にする
+    	double samples[];			// Sample with 1 as the whole graph
+    	double max=0,min=0,vpp=0;
     	double freq=0;
     	double vrms=0,mean=0;
     	int num_waves=0;
@@ -1116,7 +1079,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         	if(samples == null)return;
 
         	//
-        	//	レンジオーバーチェック
+        	//	Range over detect
         	//
 
         	for(int i=0;i<sampleLength;i++){
@@ -1157,7 +1120,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 
         	//
-        	//	平均電圧 mean
+        	//	Mean voltage
         	//
 
 			double aqum = 0;
@@ -1166,18 +1129,18 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         	}
 
         	mean = aqum / (double) sampleLength;
-        	mean = mean - (mean%0.001);	// 精度を落とす
+        	mean = mean - (mean%0.001);									// Reduce accuracy
         	if(Math.abs(mean) <= 0.003){
         		mean = 0;
         	}
 
         	//
-        	//	実効値　Vrms
+        	//	Vrms
         	//
 
         	aqum = 0;
         	for(int i=0;i<sampleLength;i++){
-        		aqum +=  Math.pow((samples[i] - g_bias_pos),2.0);		// パワーを足していく
+        		aqum +=  Math.pow((samples[i] - g_bias_pos),2.0);		// Adding power
         	}
 
         	vrms = aqum / (double) sampleLength;
@@ -1185,11 +1148,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 
         	//
-        	//	peak-to-peak 計測
+        	//	peak-to-peak voltage
         	//
 
         	max = samples[0];
-        	min = samples[0];	//最高値、最低値
+        	min = samples[0];
 
         	for(int i=1;i<sampleLength;i++){
         		if(samples[i] > max) max = samples[i];
@@ -1198,12 +1161,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         	vpp = max-min;
 
         	//
-        	//	周波数計測
+        	//	Frequency
         	//
 
         	freq = 0;
 
-        	if(vpp < (1/16)){	// 振幅が1/2div 以下なら計測しな
+        	if(vpp < (1/16)){	// If the amplitude is less than 1/2 div, do not measure
         		return;
         	}
 
@@ -1213,8 +1176,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         	// 見つけたら最初のスレシュルドhighをダウンクロスかスレシュルドLowをアップクロスした点を位相の開始地点にする
         	//
 
-        	double high_threth = max - vpp/4;		// ハイ側しきい値
-        	double low_threth = min + vpp/4;		// ロー側しきい値
+        	// process flow
+            // Look for points climbing up the cross-over or threshold Threshhigh high
+            // Cross or cross search the opposite threshold
+            // When we find it, we make the first threshold high high as the starting point of the phase crossing up or down crossing the threshold Low
+
+        	double high_threth = max - vpp/4;		// High threshold
+        	double low_threth = min + vpp/4;		// Low threshold
 
         	int aqum_time = 0,last_overed_i=0;
 
@@ -1253,7 +1221,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     }
 
 
-	// すぐメッセージ送信する
+    // Send message for device
     private void sendMessage(int m,int d) {
     	if(epw_Msg == null)return;
 
@@ -1271,33 +1239,21 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	    //if(D)Log.d(TAG, "Send Message = " + Integer.toString(m) + " Data = " + Integer.toString(d));
     }
 
-
-//	// すぐメッセージ送信する
-//    private void sendMessage(int m) {
-//    	if(epw_Msg == null)return;
-//
-//    	byte[] buffer = new byte[EpOutPacketSize];
-//	    buffer[0] = (byte) m;
-//	    int ret = deviceConnection.bulkTransfer(epw_Msg, buffer, 1, 50);
-//	    if(ret<0){
-//	    	 if(D)Log.e(TAG, "Send Message FAILURE");
-//	    }
-//
-//	    if(D)Log.d(TAG, "Send Message = " + Integer.toString(m));
-//    }
-
+    //
+    //	Metric prefix converter
+    //
 	public String siConverter(double value){
 		String si = "";
 		String minus = null;
 
-		// 負値なら
+
 		if(value < 0){
 			minus = "-";
 			value = (-value);
 		}
 
 
-		if (value < 0.000000001){	// 値はすごく小さい
+		if (value < 0.000000001){	// value is too little
 			return "0";				// return
 
 		} else if( value < 0.000001 ){	// nano
@@ -1310,7 +1266,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			si = "m";
 			value = value * 1000;
 		} else if (value < 1000){
-			// 何もしない
+			// do nothing
 		} else if (value < 1000000) {	// Kiro
 			si = "K";
 			value = value * 0.001;
@@ -1361,11 +1317,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
     private void setTriggerMode(){
 
-		if(autoModeNormal && autoModeTask != null && triggerMode != TGMODE_AUTO){	// AutoModeTaskを終了させる
+		if(autoModeNormal && autoModeTask != null && triggerMode != TGMODE_AUTO){	// End AutoModeTask
 			autoModeTask.endAutoModeNormal();
 		}
 
-    	if(run_status == true){		// STOPの時は送信しない
+    	if(run_status == true){		// Not send if STOP mode
     		if(triggerMode == TGMODE_AUTO  || triggerMode == TGMODE_FREE) {
     			sendMessage(MESSAGE_RUNMODE,TGMODE_FREE);
     		} else if(triggerMode == TGMODE_NORMAL){
@@ -1379,12 +1335,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	}
 
     	triggerModeText.setText(TRIGGER_MODE_LIST[triggerMode]);
-    	//背景を点滅
+    	//Blink background
     	blinkTextBG(triggerModeText,Color.GRAY);
     }
 
 
-    private void setTimescale(){	// 80Msps時は4.5%波形が大きくなる　→　最大入力レンジが4.5%狭まる
+    private void setTimescale(){
 
     	switch(timescale){
     		case 0:
@@ -1402,29 +1358,28 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			case 4:
 				sampleLength = 400;
 				break;
-			default:	// 5以上
+			default:	// timescale >= 5
 				sampleLength = 800;
     	}
 
-    	// 80Mspsの時はADCの範囲が狭まるので縦軸補正値を計算し直す
+    	// At 80Msps, ADC input impedance is change. Necessary to re calculation vertical axis
     	setupVerticalAxis();
     	setupBias();
 
     	sendMessage(MESSAGE_TIMESCALE,timescale);
-    	setHTrigger();						// トリガーTimerを再計算させるため
+    	setHTrigger();						// For re calculate oscilloscope trigger timer
     	setBias(true);
 
     	TimescaleText.setText("Td:"+String.format("%4s", TIME_SCALE_LIST[timescale])+"s");
 
-    	//背景を点滅
     	blinkTextBG(TimescaleText,Color.GRAY);
     }
 
 
-    // g_hpos: 画面右端が1中央が0左端が-1
+    // g_hpos: The right edge of the screen is 1 Center is 0, Left edge is -1
 	public void setHTrigger(){
 
-		// 水平トリガー変更メッセージ送信
+		// Send horizontal trigger value change message
 		int h_value = (int) (g_hpos * (sampleLength/2));
 		sendMessage(MESSAGE_H_TRIGGER, h_value);
 
@@ -1434,7 +1389,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		double ht_real = g_hpos * TIME_CONVERT_LIST[timescale] * 4.0;
 		HPotisionText.setText("HT:"+ String.format("%7s", siConverter(ht_real) + "s"));
 
-		//HPotisionText.setText("HT:"+Integer.toString(HTriggerValue));
+		//HPotisionText.setText("HT:"+Integer.toString(HTriggerValue));	// display low value
 	}
 
 
@@ -1450,14 +1405,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     			verTriggerValue = 0;
     		}
 
-			// 垂直トリガー変更メッセージ送信
+			//Send vertical trigger value change message
     		sendMessage(MESSAGE_V_TRIGGER,verTriggerValue);
     	}
 
     	mGraph.setVTriggerPos(g_vpos);
 
     	double realVoltage = (g_vpos-g_bias_pos) * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio;
-		//VPotisionText.setText("VT:"+Integer.toString(verTriggerValue));		// 生の値を表示
+		//VPotisionText.setText("VT:"+Integer.toString(verTriggerValue));		// display low value
     	VPotisionText.setText("VT:" + String.format("%7s",siConverter(realVoltage) +"V"));
     }
 
@@ -1465,15 +1420,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		int bias = 0;
 		if(isSendData){
 
-			if(bias < 0.5) {	// 0.5 未満
+			if(bias < 0.5) {	// under 0.5
 				bias = bias_center - (int)((1.0 - (g_bias_pos * 2.0)) * bias_lower);
-			} else {	// 0.5以上
+			} else {	// higher than 0.5
 				bias = bias_center + (int)(((g_bias_pos-0.5) * 2.0) * bias_upper);
 			}
 
 			bias = bias + opamp_offset_calib_value_list[voltscale];
 
-//	    	if(timescale <= 5){	// 80Msps の時は入力レンジが狭まるので補正
+//	    	if(timescale <= 5){	// at 80Msps
 //	    		bias += BIAS_DROP_CALIBVAL_AT_80MSPS ;
 //    		}
 
@@ -1483,13 +1438,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 				bias = 0;
 			}
 
-			// バイアス電圧変更メッセージ送信
+			// bias voltage change message
 			sendMessage(MESSAGE_BIAS,bias);
 		}
 
 		mGraph.setBiasPos(g_bias_pos);
 		setVTrigger(false);
-		//BiasText.setText("BI:"+Integer.toString(bias));	// 生の値を表示
+		//BiasText.setText("BI:"+Integer.toString(bias));	// display low value
 		double real = (g_bias_pos-0.5) * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio;
 		BiasText.setText("PS:"+String.format("%7s",siConverter(real)+"V"));
 	}
@@ -1519,7 +1474,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		}
 		VoltscaleText.setText("Vd:"+String.format("%4s",scale)+"V");
 
-//		//ボタンを消す
+//		//hide button
 //		if(voltscale==0){
 //			vs_plus_btn.setVisibility(View.INVISIBLE);
 //			vs_minus_btn.setVisibility(View.VISIBLE);
@@ -1562,11 +1517,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 		int exe=0;
 
-		if(calibrateReceivedCount == (exe++)){	// キャリブレーション準備
+		if(calibrateReceivedCount == (exe++)){	// ready for calibration
 			sendMessage(MESSAGE_RUNMODE,TGMODE_DEVICE_STOP);	// STOP
 
 
-			// キャリブレーション値リセット
+			// Reset calibration value
 			highdiv_input_calib_voltage = 0;
 			lowdiv_input_calib_voltage = 0;
 			highdiv_opa_diff = 0;
@@ -1591,7 +1546,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	    		RunStopToggle();
 	    	}
 
-			// バイアスをグラフの3/8にセット
+			// Set bias value at graph 3/8 point
 			//sendMessage(MESSAGE_BIAS,TYPICAL_BIAS_BOTTOM+((int)(TYPICAL_BIAS_FS_VALUE*3/8.0)));
 			g_bias_pos = 3.0/8.0;
 			setBias(true);
@@ -1599,18 +1554,18 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			triggerSlopeUp = true;	// Up trigger
 			setTriggerSlope();
 
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 		} else if(calibrateReceivedCount == (exe++) || calibrateReceivedCount == (exe++)){
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-		} else if(calibrateReceivedCount == (exe++)){		// GND 値取得
+		} else if(calibrateReceivedCount == (exe++)){		// get GND value
 			gndValue = getDC(samples);		// 5V divの時のGND値
 
 	    	voltscale = VOLTSCALE_200MV;  // 200mV div
 	    	setVoltscale(true);
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-		} else if( calibrateReceivedCount == (exe++)){		// GND 値取得
+		} else if( calibrateReceivedCount == (exe++)){		// get GND value
 			Log.d( TAG,"calibration: get gnd value" );
 
 			gndValue200mV = getDC(samples);
@@ -1624,28 +1579,28 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			g_vpos = 4.0/8.0;	// VTrigger = center
 			setVTrigger(true);
 
-			g_hpos = -1.5;		// 画面外左に設定
+			g_hpos = -1.5;		// out of graph left side
 			setHTrigger();
 
-			Toast.makeText(this, "GNDレベル取得。校正器接続待機", Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Get GND value. Awaiting connect calibrator", Toast.LENGTH_SHORT).show();
 
 			Log.d( TAG,"calibration: waiting connect calibrator" );
 
 		} else if(calibrateReceivedCount == (exe++)){
 			//
-			//	Low div キャリブレーション値取得
+			//	Get low div calibration value
 			//
 
-			// ADC最大入力電圧幅誤差計測（最大１０％±）
+			// ADCMax input error measure (Max10+-)
 			double real_vpp200mv_val = (double)(getDC(samples) - gndValue200mV);
 			double imagine_vpp200mv_val = TYPICAL_FULLSCALE_MAX_VAL * TYPICAL_AMP_ERROR[VOLTSCALE_200MV] * (LOWDIV_CALIBRATION_VOLTAGE / (0.2*8)); 	// アンプエラーを考慮
 			int tmp = (int)(((imagine_vpp200mv_val / real_vpp200mv_val) - 1.0) * TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP * 1000);	// mV
 
-			// エラーチェック
+			// Validation
 			if(Math.abs(tmp) > 250){
 				Log.e( TAG,"adc input calibration voltage is overflow : "+Integer.toString(tmp));
 				calibration = false;
-				Toast.makeText(this, "キャリブレーションエラー　キャリブレーション終了", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, "Calibration error.Stop calibration", Toast.LENGTH_SHORT).show();
 				return;
 			};
 
@@ -1655,29 +1610,29 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			if(lowdiv_input_calib_voltage < 0){
 				p = "";
 			}
-			Toast.makeText(this, "Low div入力電圧幅誤差取得: "+p+Integer.toString(lowdiv_input_calib_voltage)+"mV", Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Get low div input volatge error: "+p+Integer.toString(lowdiv_input_calib_voltage)+"mV", Toast.LENGTH_SHORT).show();
 
-			if(D)Log.d( TAG,"adc input calibration voltage = "+Integer.toString(lowdiv_input_calib_voltage)+"mV"+"\n 校正器切断待機" );
+			if(D)Log.d( TAG,"adc input calibration voltage = "+Integer.toString(lowdiv_input_calib_voltage)+"mV"+"\n waiting disconnect calibrator" );
 
 			voltscale = VOLTSCALE_5V;
 			setVoltscale(true);
 
 
-		} else if(calibrateReceivedCount == (exe++)){		// 校正器接続検知
+		} else if(calibrateReceivedCount == (exe++)){		// Calibrator connection detected
 			//
-			//	High div キャリブレーション値取得
+			//	Get high div calibration value
 			//
 
-	    	// ADC最大入力電圧幅誤差計測（最大１０％±）
+			// ADCMax input error measure (Max10+-)
 	    	double real_vpp10v_val = (double)(getDC(samples) - gndValue);
-	    	double imagine_vpp10v_val = TYPICAL_FULLSCALE_MAX_VAL * TYPICAL_AMP_ERROR[0] * (HIGHDIV_CALIBRATION_VOLTAGE / (5.0*8)); 	// ５V/divのアンプエラーを考慮
+	    	double imagine_vpp10v_val = TYPICAL_FULLSCALE_MAX_VAL * TYPICAL_AMP_ERROR[0] * (HIGHDIV_CALIBRATION_VOLTAGE / (5.0*8)); 	// 5V/divのアンプエラーを考慮
 			int tmp = (int)((( imagine_vpp10v_val/ real_vpp10v_val) - 1.0) * TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP * 1000);	// mV
 
-			// エラーチェック
+			// Check value
 			if(Math.abs(tmp) > 250){
 				Log.e( TAG,"adc input calibration voltage is overflow : "+Integer.toString(tmp));
 				calibration = false;
-				Toast.makeText(this, "キャリブレーションエラー　キャリブレーション終了", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, "Calibration error.Stop calibration", Toast.LENGTH_SHORT).show();
 				return;
 			};
 
@@ -1687,61 +1642,61 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			if(highdiv_input_calib_voltage < 0){
 				p = "";
 			}
-			Toast.makeText(this, "High div入力電圧幅誤差取得: "+p+Integer.toString(highdiv_input_calib_voltage)+"mV", Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Get high div input volatge error: "+p+Integer.toString(highdiv_input_calib_voltage)+"mV", Toast.LENGTH_SHORT).show();
 
-			if(D)Log.d( TAG,"High div input calibration voltage = "+Integer.toString(highdiv_input_calib_voltage)+"mV"+"\n 校正器切断待機" );
+			if(D)Log.d( TAG,"High div input calibration voltage = "+Integer.toString(highdiv_input_calib_voltage)+"mV"+"\n waiting disconnect calibrator" );
 
 			triggerSlopeUp = false;	// down trigger
 			setTriggerSlope();
 
 
-		}  else if (calibrateReceivedCount == (exe++)){	// 校正器切断検知
+		}  else if (calibrateReceivedCount == (exe++)){	// Detect cariblator disconnect
 			//
-			//	オペアンプ入力オフセット電圧取得
+			//	Get OPAMP input offset voltage
 			//
-			// OPA4354の入力オフセット電圧 Typ ±2mV Max ±8mV これが１０倍になるので　最大±80mV
-			voltscale = 3;		// 500mV
+			// OPA4354's input offset voltage is Typical +-2mV. Max +-8mV
+			voltscale = 3;		// 500mV/div
 			setVoltscale(true);
 			triggerMode = TGMODE_FREE;
 			setTriggerMode();
 		} else if (calibrateReceivedCount == (exe++)){
-			//何もしない
+			//Do nothing
 		} else if (calibrateReceivedCount == (exe++)){
 			int tmp = getDC(samples) - gndValue;
 
 			if(Math.abs(tmp) > 500){
 				if(D)Log.e( TAG,"Opamp high offset voltage is overflow : "+Integer.toString(tmp));
 				calibration = false;
-				Toast.makeText(this, "キャリブレーションエラー　キャリブレーション終了", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, "Calibration error.Stop calibration", Toast.LENGTH_SHORT).show();
 				return;
 			};
 
 			highdiv_opa_diff = tmp;
 
-			Toast.makeText(this, "オペアンプHIGH入力オフセット値: "+Integer.toString(highdiv_opa_diff), Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Opamp HIGH input offset value: "+Integer.toString(highdiv_opa_diff), Toast.LENGTH_SHORT).show();
 
 			voltscale = VOLTSCALE_20MV;
 			setVoltscale(true);
 		} else if (calibrateReceivedCount == (exe++)){
-			//何もしない
+			//Do nothing
 		} else if (calibrateReceivedCount == (exe++)){
 			int tmp = getDC(samples) - gndValue200mV;
 
 			if(Math.abs(tmp) > 500){
 				if(D)Log.e( TAG,"Opamp low offset voltage is overflow : "+Integer.toString(tmp));
 				calibration = false;
-				Toast.makeText(this, "キャリブレーションエラー　キャリブレーション終了", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, "Calibration error.Stop calibration", Toast.LENGTH_SHORT).show();
 				return;
 			};
 
 			lowdiv_opa_diff = tmp;
 
-			Toast.makeText(this, "オペアンプLOW入力オフセット値: "+Integer.toString(lowdiv_opa_diff), Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Opamp LOW input offset value: "+Integer.toString(lowdiv_opa_diff), Toast.LENGTH_SHORT).show();
 			setupBias();
 			calibration = false;
-			Toast.makeText(this, "キャリブレーション終了", Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "Calibration completed normally", Toast.LENGTH_SHORT).show();
 
-			// EEPROM 書き込み
+			// EEPROM Write
 			byte[] buffer = new byte[EpOutPacketSize];
 			int i=0;
 			buffer[i++] = MESSAGE_EEPROM_PAGE_WRITE;
@@ -1758,15 +1713,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			deviceConnection.bulkTransfer(epw_Msg, buffer, buffer.length, 250);
 
 			biasCalibState = -1;
-			//biasCalib(null);	// バイアスキャリブレーション
-
-//			voltscale = 0;		// 5V
-//			setVoltscale(true);
 		}
 
 		calibrateReceivedCount++;
 
-		// DAC出力からバイアス出力が落ち着くのは10nFコンデンサで200us程度
+		// The bias output settles down from the DAC output is about 200 us with a 10 nF capacitor
 	}
 
 	//
@@ -1778,16 +1729,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	private void biasCalib(int [] samples){
 		if(D)Log.d(TAG, "biasCalibState = "+Integer.toString(biasCalibState));
 
-		if(biasCalibState == -1){		//バイアスキャリブレーション準備
+		if(biasCalibState == -1){		//Ready for bias calibration
 
-			// 縦軸をバイアスキャリブレーション用にセットアップ　
-			// アンプのエラー率を考慮しない
+			// Do not consider the error rate of the amplifier
 	    	adc_max_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP + ((double)highdiv_input_calib_voltage / 1000);
 	    	one_lsb_voltage = adc_max_voltage / SAMPLE_MAX;
 	    	normal_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / adc_max_voltage));
 	    	normal_graph_min = (SAMPLE_MAX - normal_graph_fullscale) / 2;
 
-			adc_vs_bias = TYPICAL_BIAS_LSB_VOLTAGE / one_lsb_voltage;		// DAC1LSBの変化対してADCの値がどれだけ変化するか
+			adc_vs_bias = TYPICAL_BIAS_LSB_VOLTAGE / one_lsb_voltage;		// DAC 1LSB vs bias output voltage
 
 			voltscale = VOLTSCALE_5V;		// 5V
 			sendMessage(MESSAGE_VOLTAGE_SCALE,voltscale);
@@ -1796,63 +1746,63 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			sendMessage(MESSAGE_TIMESCALE,timescale);
 
 			bias_val = (TYPICAL_BIAS_FS_VALUE/2) + TYPICAL_BIAS_BOTTOM;
-			sendMessage(MESSAGE_BIAS,bias_val);		// グラフの中心に合わせる
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_BIAS,bias_val);		// Position at graph center
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 			biasCalibState = 1;
 
 		} if(biasCalibState <= 2){
-			biasCalibState++;	// 最初の２回の受信波形は捨てる
-	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			biasCalibState++;	// Discard the first two received samples
+	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-		} else if(biasCalibState == 3){	// グラフ中心に合うバイアス値を探る
-			int diff = getDC(samples) - ((normal_graph_fullscale/2) + graph_min);	// グラフ中心と実際の電圧との差
+		} else if(biasCalibState == 3){	// Exploring the bias value matching the center of the graph
+			int diff = getDC(samples) - ((normal_graph_fullscale/2) + graph_min);	// The difference between the graph center and the actual voltage
 			if(Math.abs(diff) > 2){
 				bias_val = bias_val - (int) ((double)diff/adc_vs_bias);
 				sendMessage(MESSAGE_BIAS,bias_val);
-				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-			} else {	// ズレが3LSB未満になったら
+			} else {	// When the deviation becomes less than 3 LSB
 				bias_center = bias_val;
 
 				Toast.makeText(this, "Bias Center = "+Integer.toString(bias_center), Toast.LENGTH_SHORT).show();
-				// バイアスをグラフの上端にセット
+				// Fit at the top of the graph
 				bias_val = TYPICAL_BIAS_BOTTOM + TYPICAL_BIAS_FS_VALUE;
 				sendMessage(MESSAGE_BIAS,bias_val);
-				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 				biasCalibState++;
 			}
 
 		} else if(biasCalibState == 4){
 
-			// グラフ上端に合うバイアス値を探る
-			int diff = getDC(samples) - (normal_graph_fullscale + graph_min);	// グラフ上端と実際の電圧との差
+			// Find the bias value matching the top of the graph
+			int diff = getDC(samples) - (normal_graph_fullscale + graph_min);	// The difference between the top of the graph and the actual voltage
 			if(Math.abs(diff) > 2){
 				bias_val = bias_val - (int) ((double)diff/adc_vs_bias);
 				sendMessage(MESSAGE_BIAS,bias_val);
-				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-			} else {	// ズレが3LSB未満になったら
+			} else {	// When the deviation becomes less than 3 LSB
 				normal_bias_upper = bias_val-bias_center;
 				Toast.makeText(this, "Bias Upper = "+Integer.toString(normal_bias_upper), Toast.LENGTH_SHORT).show();
 
 				bias_val = TYPICAL_BIAS_BOTTOM;
-				sendMessage(MESSAGE_BIAS,bias_val);		// グラフの下端に合わせる
-				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+				sendMessage(MESSAGE_BIAS,bias_val);		// Fit at the bottom of the graph
+				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 				biasCalibState++;
 			}
 
-		} else if(biasCalibState == 5) {	// グラフ下端に合うバイアス値を探る
-			int diff = getDC(samples) - graph_min;	// グラフ下端と実際の電圧との差
+		} else if(biasCalibState == 5) {	// Find the bias value matching the bottom of the graph
+			int diff = getDC(samples) - graph_min;	// The difference between the bottom of the graph and the actual voltage
 			if(Math.abs(diff) > 2){
 				bias_val = bias_val - (int) ((double)diff/adc_vs_bias);
 				sendMessage(MESSAGE_BIAS,bias_val);
-				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+				sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-			} else {	// ズレが3LSB未満になったら
+			} else {	// When the deviation becomes less than 3 LSB
 				normal_bias_lower = bias_center - bias_val;
 				Toast.makeText(this, "Bias Lower = "+Integer.toString(normal_bias_lower), Toast.LENGTH_SHORT).show();
 
-				// EEPROM 書き込み	16bitビッグエンディアンで保存
+				// EEPROM write 16bit big endianness
 				byte[] buffer = new byte[EpOutPacketSize];
 				buffer[0] = MESSAGE_EEPROM_PAGE_WRITE;
 				buffer[1] = 8;		// EEPROM Write page number
@@ -1867,7 +1817,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 				biasCalibState = 0;
 				setupVerticalAxis();
 				setupBias();
-				sendMessage(MESSAGE_RUNMODE,TGMODE_FREE);	//フリー
+				sendMessage(MESSAGE_RUNMODE,TGMODE_FREE);
 				g_bias_pos = 0.5;
 				setBias(true);
 			}
@@ -1882,61 +1832,72 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	//
 	// Auto Range
 	//
-	// １.サンプル値最大値最小値チェック
-	// サンプル値上下両方が飽和　→　終了
-	// サンプル値上側が飽和　→　グラフの下端に波形の最低値を合わせるようにバイアスを合わせる　２へ
-	// サンプル値下側が飽和　→　グラフの上端に波形の最大値を合わせるようにバイアスを合わせる　２へ
-	// ２．VPPがグラフに収まるかチェック　収まらないなら終了　収まるなら３へ
-	// ３．グラフの真ん中に波形が来るようにバイアスを合わせる
-	// ４.VPPが3/div以上になる最大の電圧レンジを選択する
-	// ５.波形３つ以上が収まる最大の水平レンジを選択する
+	// 1.サンプル値最大値最小値チェック
+	// 2.サンプル値上下両方が飽和 → 終了
+	//   サンプル値上側が飽和 → グラフの下端に波形の最低値を合わせるようにバイアスを合わせる2へ
+	//   サンプル値下側が飽和 → グラフの上端に波形の最大値を合わせるようにバイアスを合わせる2へ
+	//   VPPがグラフに収まるかチェック 収まらないなら終了 収まるなら3へ
+	// 3．グラフの真ん中に波形が来るようにバイアスを合わせる
+	// 4.VPPが3/div以上になる最大の電圧レンジを選択する
+	// 5.波形３つ以上が収まる最大の水平レンジを選択する
+
+
+	// 1. Sample value maximum value and minimum value check
+	// 2. Sample value both up and down are saturated to terminate
+	// Sample upper side is saturated → bias is adjusted so that the lowest value of waveform matches lower end of graph 2
+	// saturate the sample value → adjust the bias so that the maximum value of the waveform matches the top of the graph 2
+	// check if VPP fits into the graph If it does not fit, exit 3
+	// 3. Adjust the bias so that the waveform comes in the middle of the graph
+	// 4. Select the maximum voltage range where VPP is 3 / div or more
+	// 5. Choose the maximum horizontal range that will fit three or more waveforms
+
 	int autoSetState = 0;
 	public void autoSet(){
 
 		Log.d(TAG,"Autoset state = " + Integer.toString(autoSetState));
 
 		if(autoSetState <= 2){
-			autoSetState++;	// 最初の２回の受信波形は捨てる
-	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			autoSetState++;	// Discard the first two received samples
+	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-		}else if(autoSetState == 3 || autoSetState == 5){	// 波形をグラフの真ん中に持ってくる
-			if(wave.vpp > 1){	// 波形はグラフに収まらないなら終了
+		}else if(autoSetState == 3 || autoSetState == 5){	// Set the waveform in the center of the graph
+			if(wave.vpp > 1){	// If the waveform does not fit in the graph end
 				autoSetState = 0;
 				return;
-			} else if(wave.min < 0 && wave.max < 1){ // 下が飽和
-				// 波形の最大値がグラフの一番上に来るようなバイアス値
+			} else if(wave.min < 0 && wave.max < 1){ // Bottom saturate
+				// A bias value such that the maximum value of the waveform is at the top of the graph
 				g_bias_pos = g_bias_pos + 1.0 - wave.max;
-			} else if(wave.min > 0 && wave.max > 1){ // 上が飽和
-				// 波形の最小値がグラフの一番下に来るようなバイアス値
+			} else if(wave.min > 0 && wave.max > 1){ // Top sasturate
+				// A bias value such that the minimum value of the waveform is at the bottom of the graph
 				g_bias_pos = g_bias_pos - wave.min;
-			} else {		// 飽和なし
-				// 波形をグラフの中心に
+			} else {		// not saturate
+				// Set the waveform at the center of the graph
 				g_bias_pos = g_bias_pos - ((wave.min + (wave.vpp / 2)) - 0.5);
-				//g_bias_pos = g_bias_pos - (g_bias_pos % 0.125);	// divの区切りに合わせる
+				//g_bias_pos = g_bias_pos - (g_bias_pos % 0.125);	// Fit the divition
 				autoSetState++;
 			}
 
-			if(g_bias_pos > g_bias_pos_max) {		// バイアス出力最大値を超える場合
+			if(g_bias_pos > g_bias_pos_max) {		// Over the bias output maximum value
 				g_bias_pos = g_bias_pos_max;
 				autoSetState = 0;
-			} else if(g_bias_pos < g_bias_pos_min) {		// バイアス出力最小値を下回る場合
+			} else if(g_bias_pos < g_bias_pos_min) {		// Below the bias output minimum value
 				g_bias_pos = g_bias_pos_min;
 				autoSetState = 0;
 			}
 
 			setBias(true);
-	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+	    	sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 		}
-		else if(autoSetState == 4){		// 5V/div からレンジを小さくしていく
+		else if(autoSetState == 4){		// Range gradually decreases from 5V/div
 
-			//　どちらかが飽和しているならバイアスを調節
+			// Adjust bias if either is saturated
 			if(wave.min < 0 || wave.max > 1){
 				autoSetState = 3;
 				autoSet();
 				return;
 			}
 
-			// 2.5div 以上になる最大の電圧レンジを選択する
+			// Select the maximum voltage range that will be greater than 2.5V/div
 			if(wave.vpp < (2.5/8.0)){
 				voltscale++;
 				if(voltscale >= (NUM_VOLTSCALE-1)){
@@ -1947,9 +1908,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 				autoSetState++;
 				//autoSetState = 0;
 			}
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
-		}else if(autoSetState == 6){	// 水平レンジ選択
+		}else if(autoSetState == 6){	// Horizontal range select
 			if(wave.num_waves < 2){
 
 				timescale++;
@@ -1969,11 +1930,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 					autoSetState = 0;
 				}
 			}
-			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//フリーシングル
+			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 		}
 
 		//
-		// 終了処理
+		// End processing
 		//
 		if(autoSetState == 0){
 
@@ -1988,7 +1949,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	}
 
 
-	//背景を点滅させる
+	//Blink text background
     TextView blinkText;
     boolean occupied = false;
     private void blinkTextBG(TextView t,int c){
@@ -2013,7 +1974,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 
 	//
-	// マルチタッチジェスチャーの処理
+	// Handling multiple touch gestures
 	//
 	boolean pinchDetect = false;
 	private double tmp_hpos,tmp_vpos,tmp_bias_pos;
@@ -2029,7 +1990,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
             pinchDetect = true;
             mGraph.unDrawLine();
 
-            // 値を元に戻す
+            // Restore the value
             if(g_hpos != tmp_hpos){
             	g_hpos = tmp_hpos;
             	setHTrigger();
@@ -2045,7 +2006,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
             	setBias(true);
             }
 
-            // 軸を決定する
+            // Determine axis
             if(detector.getCurrentSpanX() > detector.getCurrentSpanY()){
             	axisIsX = true;
             } else {
@@ -2060,17 +2021,17 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
             float endSpan = detector.getCurrentSpan();
 
-            if(beginSpan > endSpan){	// ピンチイン
-            	if(axisIsX){	// 水平方向
+            if(beginSpan > endSpan){	// Pinch in
+            	if(axisIsX){	// Horizontal
             		td_unzoom_btn.performClick();	// Time +
-            	} else {		// 垂直方向
+            	} else {		// Vertical
             		if(D) Log.d(TAG, "onScaleEnd :Detect pinch in axis vertical");
             		vs_plus_btn.performClick();		// Volt +
             	}
-            } else {					// ピンチアウト
-            	if(axisIsX){	// 水平方向
+            } else {					// Pinch out
+            	if(axisIsX){	// Horizontal
             		td_zoom_btn.performClick();		// Time -
-            	} else {		// 垂直方向
+            	} else {		// Vertical
 	            	if(D) Log.d(TAG, "onScaleEnd :Detect Pinch out");
 	            	vs_minus_btn.performClick();	// Volt -
             	}
@@ -2081,12 +2042,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	}
 
     //
-    // グラフを触ったら
+    // Touch the graph area
     //
     private int[] GraphPosX;
     private int[] GraphPosY;
-    private int XRightHexPos;	// 一番右のマス目の境界線の座標
-    private int XLeftHexPos;	// 一番右のマス目の境界線の座標
+    private int XRightHexPos;	// The coordinates of the boundary line of the rightmost grid
+    private int XLeftHexPos;	// The coordinates of the boundary line of the leftmost grid
     private int downPos = 0;
     private final int DOWN_LEFT = 1;
     private final int DOWN_CENTER = 2;
@@ -2095,26 +2056,26 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     public boolean onTouchEvent(MotionEvent e) {
     	gestureDetector.onTouchEvent(e);
 
-    	// 1回だけ
+    	// First time only
     	if(GraphPosX == null){
     		GraphPosX = new int[2];
     		GraphPosY = new int[2];
 
-	        // 0にグラフの左上の角座標、1にグラフ右下の角の座標
+	        // Enter 0 at the top left corner of the graph, 1 at the bottom right corner of the graph
 	        mGraph.getLocationInWindow(GraphPosX);
 	        GraphPosY[0] = GraphPosX[1];
 	        GraphPosX[1] = GraphPosX[0]+mGraph.getWidth();
 	        GraphPosY[1] = GraphPosY[0]+mGraph.getHeight();
 
-	        XRightHexPos = (int)(GraphPosX[0]+(GraphPosX[1]-GraphPosX[0])*(8.5/10.0));	//右側から1.5div分
-	        XLeftHexPos = (int)(GraphPosX[0]+(GraphPosX[1]-GraphPosX[0])*(1.5/10.0));	//左側から1.5div分
+	        XRightHexPos = (int)(GraphPosX[0]+(GraphPosX[1]-GraphPosX[0])*(8.5/10.0));	//1.5 div from the right
+	        XLeftHexPos = (int)(GraphPosX[0]+(GraphPosX[1]-GraphPosX[0])*(1.5/10.0));	//1.5 div from the Left
     	}
 
     	final float x = e.getX();
     	final float y = e.getY();
 
 
-    	// グラフの中かどうか
+    	// Check touched the inside of the graph
     	if((x>GraphPosX[0]) && (x<GraphPosX[1]) && (y>GraphPosY[0]) && (y<GraphPosY[1])){
 
             switch (e.getAction()) {
@@ -2128,7 +2089,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		            	downPos = DOWN_CENTER;
 		            }
 
-		            // ピンチ操作の時に元に戻す用
+		            // variable for pinch operation for restore
 		            tmp_bias_pos = g_bias_pos;
 		            tmp_hpos = g_hpos;
 		            tmp_vpos = g_vpos;
@@ -2152,9 +2113,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
             }
 
             if(pinchDetect)return true;
-            if(downPos == DOWN_CENTER){	// 最初に触ったのが中央
+            if(downPos == DOWN_CENTER){	// If first touched the center of the graph
                 //
-        		// 水平トリガー変更
+        		// Change horizontal trigger
                 //
             	g_hpos = (((x-GraphPosX[0]) / (GraphPosX[1]-GraphPosX[0])) - 0.5) * 2.0;
 
@@ -2167,14 +2128,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 	    	} else if (downPos == DOWN_RIGHT) {
 	    		//
-	    		//垂直トリガー変更
+	    		// Change vertical trigger
 	    		//
 	    		g_vpos = (-(y-GraphPosY[1])) / (GraphPosY[1]-GraphPosY[0]);
 
 	    		if(expand){
 	    			g_vpos += (g_vpos - 0.5) * (VT_EXPAND_RATIO-1.0);
 
-		    		if(g_vpos > g_vpos_max){		// 制限
+		    		if(g_vpos > g_vpos_max){		// Limitation
 		    			g_vpos = g_vpos_max;
 		    		} else if(g_vpos < g_vpos_min){
 		    			g_vpos = g_vpos_min;
@@ -2186,22 +2147,22 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 	    	} else {
 	    		//
-	    		// DCバイアス変更
+	    		// Change DC bias
 	    		//
-	    		double vp_bias_abs = g_vpos - g_bias_pos;	// vpos と bias_posの差
+	    		double vp_bias_abs = g_vpos - g_bias_pos;	// difference of between vpos and bias_pos
 	    		g_bias_pos = (-(y-GraphPosY[1])) / (GraphPosY[1]-GraphPosY[0]);
 
 	    		if(expand){
 	    			g_bias_pos += (g_bias_pos - 0.5) * (BIAS_EXPAND_RATIO-1.0);
 
-		    		if(g_bias_pos > g_bias_pos_max){		// 制限
+		    		if(g_bias_pos > g_bias_pos_max){		// limitation
 		    			g_bias_pos = g_bias_pos_max;
 		    		} else if(g_bias_pos < g_bias_pos_min){
 		    			g_bias_pos = g_bias_pos_min;
 		    		}
 	    		}
 
-	    		g_vpos = vp_bias_abs + g_bias_pos;	// biasの動きにvtriggerを追従させる
+	    		g_vpos = vp_bias_abs + g_bias_pos;	// Make vtrigger follow the movement of position
 
 	    		setVTrigger(true);
 	    		setBias(true);
@@ -2210,7 +2171,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 	    	}
 
-    		mGraph.invalidate();	// 画面更新
+    		mGraph.invalidate();	// Update graph
     	}
     	return true;
     }
@@ -2219,7 +2180,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     @Override
     public void onClick(View v) {
 
-    	if(autoSetState > 0)return;		// Autoset中の操作は無効
+    	if(autoSetState > 0)return;		// Invalid operation during Autosetting
 
     	int id = v.getId();
 
@@ -2250,14 +2211,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         		}
     		break;
 
-    		case R.id.btn_edge:		// トリガーエッジ変更
+    		case R.id.btn_edge:			// Change trigger slope
     			triggerSlopeUp = !triggerSlopeUp;
     			setTriggerSlope();
     		break;
 
-    		case R.id.btn_calib:		// キャリブレーション
+    		case R.id.btn_calib:		// Start calibration button
 
-    			// キャリブレーションセットアップ
     			calibration = !calibration;
     			if(calibration == true){
     				calibrateReceivedCount = 0;
@@ -2273,7 +2233,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
         		} else {
         			blinkTextBG(VoltscaleText,Color.RED);
-        			vibrator.vibrate(50);	// 振動
+        			vibrator.vibrate(50);		// Vibrate
         		}
 			break;
 
@@ -2285,7 +2245,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         			blinkTextBG(VoltscaleText,Color.GRAY);
         		} else {
         			blinkTextBG(VoltscaleText,Color.RED);
-        			vibrator.vibrate(50);	// 振動
+        			vibrator.vibrate(50);
         		}
     		break;
 
@@ -2296,7 +2256,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         			setTimescale();
         		} else {
         			blinkTextBG(TimescaleText,Color.RED);
-        			vibrator.vibrate(50);	// 振動
+        			vibrator.vibrate(50);
         		}
 
     		break;
@@ -2307,12 +2267,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
         			setTimescale();
         		} else {
         			blinkTextBG(TimescaleText,Color.RED);
-        			vibrator.vibrate(50);	// 振動
+        			vibrator.vibrate(50);
         		}
     		break;
 
 
-    		case R.id.trig_mode_button:		// トリガーモード変更
+    		case R.id.trig_mode_button:		// Change trigger mode button
 
         		final String[] items = {"AUTO", "NORMAL", "FREERUN" , "SINGLE SHOT"};
         		new AlertDialog.Builder(this)
@@ -2329,7 +2289,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     		break;
 
 
-    		case R.id.tbtn_expand:			// 水平トリガー　バイアス　移動量拡張ボタン
+    		case R.id.tbtn_expand:			// Moving ratio expand button
 
     			if(expand == false){
     				expand = true;
@@ -2363,19 +2323,19 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
 
     		//
-    		//	オートセット
+    		//	AutoSet
     		//
     		case R.id.btn_autoset:
-    	    	// オートセット準備
+    	    	// ready for autoset
     			triggerMode = TGMODE_SINGLE_FREE;
     			if(autoModeNormal && autoModeTask!=null){
     				autoModeTask.endAutoModeNormal();
     			}
 
-    			sendMessage(MESSAGE_RUNMODE,TGMODE_DEVICE_STOP);	//とりあえずストップ
+    			sendMessage(MESSAGE_RUNMODE,TGMODE_DEVICE_STOP);	// stop
     	    	voltscale = 1;  			// V/div = 2V
     	    	setVoltscale(true);
-    	    	g_bias_pos = 0.5;			// バイアスを中心に
+    	    	g_bias_pos = 0.5;
     	    	setBias(true);
 
     	    	timescale = 17;	// 10ms
@@ -2384,7 +2344,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	    	setTimescale();
     			autoSetState = 1;
 
-    			setTriggerMode();	//フリーシングル
+    			setTriggerMode();	//Free single shot mode
     		break;
 
 
@@ -2425,24 +2385,23 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	public void onWindowFocusChanged (boolean hasWindowFocus){
     	if(D) Log.i(TAG, "+ ON WINDOW FOCUS CHANGED +");
 
-    	if(isGraphInit)return;		// 一度だけ実行
+    	if(isGraphInit)return;		// Do not run twice
 
     	//
-    	//	Graphの大きさ調節
+    	//	Adjust the size of Graph
     	//
 
     	isGraphInit = true;
     	Point point = new Point(0, 0);
     	Display display = this.getWindowManager().getDefaultDisplay();
 
-    	// 画面のユーザー領域範囲取得
+    	// Acquire the user area range of the screen
     	 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
     		getWindowManager().getDefaultDisplay().getRealSize(point);
     	 }
     	 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
 
 	    	try{
-	    		// ユーザー領域取得
 		        Method getRawWidth = Display.class.getMethod("getRawWidth");
 		        Method getRawHeight = Display.class.getMethod("getRawHeight");
 		        int width = (Integer) getRawWidth.invoke(display);
@@ -2456,16 +2415,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     	}
 
 
-    	int buttonWidth = trig_mode_button.getWidth();				// ボタンの幅取得
+    	int buttonWidth = trig_mode_button.getWidth();
     	int graphHeight = mGraph.getHeight();
-    	int smallDisplayWidth = (int)((double)point.x - (double)buttonWidth*2.0);				// 画面が小さい端末用の幅
-    	int bigDisplayWidth = (int) (graphHeight*(5.0/4.0));			// 画面が大きい端末用の幅
+    	int smallDisplayWidth = (int)((double)point.x - (double)buttonWidth*2.0);
+    	int bigDisplayWidth = (int) (graphHeight*(5.0/4.0));
 
     	int w,h;
-    	if(bigDisplayWidth > smallDisplayWidth){	// 小さい端末
+    	if(bigDisplayWidth > smallDisplayWidth){	// small display
     		w = smallDisplayWidth;
     		h = (int) (smallDisplayWidth*(4.0/5.0));
-    	} else {									// 大きい端末
+    	} else {									// big display
     		w = bigDisplayWidth;
     		h = graphHeight;
     	}
