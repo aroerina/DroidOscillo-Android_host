@@ -19,18 +19,17 @@ public class GraphView extends View {
 
 	private int FrameRate = 0;
 
+	// Graph width and height
 	private double width;
 	private double height;
 
-	private final Paint p_wave = new Paint();	//波形
-	private final Paint p_waku = new Paint();	//枠
-	private final Paint p_masu = new Paint(); //マス目
-	private final Paint p_HTriggerDeep = new Paint(); // 水平トリガー濃い
-	private final Paint p_HTriggerLight = new Paint(); // 水平トリガー薄い
-	private final Paint p_BiasDeep = new Paint(); // バイアス濃い
-	private final Paint p_BiasLight = new Paint(); // バイアス薄い
-	private final Paint p_VTriggerDeep = new Paint(); // 垂直トリガー濃い
-	private final Paint p_VTriggerLight = new Paint(); // 垂直トリガー薄い
+	// Paint objects (definition of color and line width)
+	private final Paint p_wave = new Paint();
+	private final Paint p_frame = new Paint();
+	private final Paint p_matrix = new Paint();
+	private final Paint p_HTriggerLine = new Paint();
+	private final Paint p_BiasLine = new Paint();
+	private final Paint p_VTriggerLine = new Paint();
 
 	private int sampleLength;
 	private double pos_bitmap_height,pos_bitmap_width,hpos_bitmap_height,hpos_bitmap_width;
@@ -39,8 +38,7 @@ public class GraphView extends View {
 	private Bitmap bm_pos_v = BitmapFactory.decodeResource(getResources(),R.drawable.pos_v);
 	private Bitmap bm_pos_h = BitmapFactory.decodeResource(getResources(),R.drawable.pos_h);
 
-	private double[] data = null;	//波形データ
-
+	private double[] data = null;	//waveform data
 
 	private double h_trigger_pos = 0;
 	private double bias_pos = 0;
@@ -58,17 +56,14 @@ public class GraphView extends View {
     public GraphView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
-        // Paint 定義
+        // Paint initialize
         p_wave.setColor(Color.argb(255, 255, 0, 0));
-        p_waku.setColor(Color.argb(255, 128, 128, 128));
-        p_waku.setStyle(Paint.Style.STROKE); //塗りつぶししない
-        p_masu.setColor(Color.argb(255, 60, 60, 60));
-        p_HTriggerDeep.setColor(Color.argb(255, 0, 255, 0));
-        p_HTriggerLight.setColor(Color.argb(100, 0, 255, 0));
-        p_BiasDeep.setColor(Color.argb(255, 0, 255, 255));
-        p_BiasLight.setColor(Color.argb(100, 0, 255, 255));
-        p_VTriggerDeep.setColor(Color.argb(255, 255, 0, 0));
-        p_VTriggerLight.setColor(Color.argb(100, 255, 0, 0));
+        p_frame.setColor(Color.argb(255, 128, 128, 128));
+        p_frame.setStyle(Paint.Style.STROKE);		// Do not fill the frame
+        p_matrix.setColor(Color.argb(255, 60, 60, 60));
+        p_HTriggerLine.setColor(Color.argb(100, 0, 255, 0));
+        p_BiasLine.setColor(Color.argb(100, 0, 255, 255));
+        p_VTriggerLine.setColor(Color.argb(100, 255, 0, 0));
 
     }
 
@@ -79,15 +74,15 @@ public class GraphView extends View {
 	}
 
 	//
-	//		初期化
+	//		initialize grahp
 	//
 	public void init(int w,int h){	// w = set width ,h = set height
-		if(matrix != null)return;	// 一度だけ実行
+		if(matrix != null)return;	// do first time only
 
 		width = (double)w;
 		height = (double)h;
 
-		// 千の太さ定義
+		// Define line thickness
 		float line_stroke_width = (float)(width/200);
 		float wave_stroke_width = (float)((int)width/500);
 		p_wave.setStrokeWidth(wave_stroke_width);
@@ -97,18 +92,15 @@ public class GraphView extends View {
 			p_wave.setAntiAlias(true);
 		}
 
-        p_HTriggerDeep.setStrokeWidth(line_stroke_width);
-        p_HTriggerDeep.setStrokeCap(Paint.Cap.ROUND);
-        p_HTriggerLight.setStrokeWidth(line_stroke_width);
-        p_BiasDeep.setStrokeWidth(line_stroke_width);
-        p_BiasLight.setStrokeWidth(line_stroke_width);
-        p_VTriggerDeep.setStrokeWidth(line_stroke_width);
-        p_VTriggerLight.setStrokeWidth(line_stroke_width);
 
-        p_masu.setStrokeWidth((float)(width/600));
+        p_HTriggerLine.setStrokeWidth(line_stroke_width);
+        p_BiasLine.setStrokeWidth(line_stroke_width);
+        p_VTriggerLine.setStrokeWidth(line_stroke_width);
+
+        p_matrix.setStrokeWidth((float)(width/600));
 
 		//
-		// マス目ビットマップを作る
+		// Create matrix bitmap
 		//
 
 		setLayoutParams(new LinearLayout.LayoutParams(w,h));
@@ -120,104 +112,105 @@ public class GraphView extends View {
 		matrix = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
 		Canvas c = new Canvas(matrix);
 
-		c.drawColor(Color.BLACK);	// キャンバスを黒で塗りつぶす
+		c.drawColor(Color.BLACK);	//Fill the canvas with black
 
 	    Paint p_point = new Paint();
 	    p_point.setColor(Color.argb(255, 255, 255, 255));
 	    p_point.setStrokeWidth((float)((int)(width / 1000)));
 
 		float p;
-		//横のマス目を描画
+		//Draw horizontal line of grid
 		for(int i=1;i<8;i++){
 			p = (float)(i*heightDiv8);
-			//c.drawLine(0, p, (float)width, p, p_masu);
+			//c.drawLine(0, p, (float)width, p, p_matrix);
 			for(int j=1;j<50;j++){
 				c.drawPoint((float)((width/50)*j), p, p_point);
 			}
 		}
 
-		//縦のマス目を描画
+		//Draw vertical line of grid
 		for(int i=1;i<10;i++){
 			p = (float)(i*widthDiv10);
-			//c.drawLine(p, 0, p, (float) height, p_masu);
+			//c.drawLine(p, 0, p, (float) height, p_matrix);
 			for(int j=1;j<40;j++){
 				c.drawPoint(p, (float)((height/40)*j), p_point);
 			}
 		}
 
-		c.drawRect(0, 0, (float)(width-1), (float)(h-1), p_waku);	// 枠描画
-//		c.drawLine((float) widthCenter,0,(float) widthCenter,(float)height, p_waku);		// 中心線描画
-//		c.drawLine(0,(float) heightCenter,(float) width,(float) heightCenter, p_waku);
+		c.drawRect(0, 0, (float)(width-1), (float)(h-1), p_frame);	// 枠描画
+//		c.drawLine((float) widthCenter,0,(float) widthCenter,(float)height, p_frame);		// 中心線描画
+//		c.drawLine(0,(float) heightCenter,(float) width,(float) heightCenter, p_frame);
 
 		//
-		//		刻み描画
+		//		Draw scale on frame
 		//
 
-		// 垂直中心
+		// Vertical center
 		float centerLineWidth = (float)(width/100);
 		float verticalLineDrawStartX = (float)(widthCenter - centerLineWidth/2);
 		float verticalLineDrawEndX = (float)(verticalLineDrawStartX + centerLineWidth);
 		for(int i=1;i<40;i++){
 			float y = (float)((height/40)*i);
-			c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_waku);
+			c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_frame);
 		}
-		// 垂直左端
+		// Vertical left
 		verticalLineDrawStartX = 0;
 		verticalLineDrawEndX = centerLineWidth;
 		for(int i=1;i<40;i++){
 			float y = (float)((height/40)*i);
-			if(i%5 == 0){	// division区切りの所は長くする
-				c.drawLine(verticalLineDrawStartX,y,(verticalLineDrawEndX+(centerLineWidth/2)),y,p_waku);
+			if(i%5 == 0){
+				c.drawLine(verticalLineDrawStartX,y,(verticalLineDrawEndX+(centerLineWidth/2)),y,p_frame);
 			} else {
-				c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_waku);
+				c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_frame);
 			}
 		}
-		// 垂直右端
+		// Vertical right
 		verticalLineDrawStartX = (float)(width-centerLineWidth);
 		verticalLineDrawEndX = (float)width;
 		for(int i=1;i<40;i++){
 			float y = (float)((height/40)*i);
-			c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_waku);
-			if(i%5 == 0){	// division区切りの所は長くする
-				c.drawLine(verticalLineDrawStartX-(centerLineWidth/2),y,verticalLineDrawEndX,y,p_waku);
+			c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_frame);
+			if(i%5 == 0){
+				c.drawLine(verticalLineDrawStartX-(centerLineWidth/2),y,verticalLineDrawEndX,y,p_frame);
 			} else {
-				c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_waku);
+				c.drawLine(verticalLineDrawStartX,y,verticalLineDrawEndX,y,p_frame);
 			}
 		}
 
 
-		// 水平中心
+		// Horizontal Center
 		float horizontalLineDrawStartY = (float)(heightCenter - centerLineWidth/2);
 		float horizontalLineDrawEndY = (float)(horizontalLineDrawStartY + centerLineWidth);
 		for(int i=1;i<50;i++){
 			float x = (float)((width/50)*i);
-			c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_waku);
+			c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_frame);
 		}
-		//水平上端
+		// Horizontal left
 		horizontalLineDrawStartY = 0;
 		horizontalLineDrawEndY = centerLineWidth;
 		for(int i=1;i<50;i++){
 			float x = (float)((width/50)*i);
 			if(i%5 > 0){
-				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_waku);
+				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_frame);
 			} else {
-				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY+(centerLineWidth/2),p_waku);
+				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY+(centerLineWidth/2),p_frame);
 			}
 		}
-		//水平下端
+
+		// Horizontal bottom
 		horizontalLineDrawStartY = (float)(height - centerLineWidth);
 		horizontalLineDrawEndY = (float)height;
 		for(int i=1;i<50;i++){
 			float x = (float)((width/50)*i);
 			if(i%5 > 0){
-				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_waku);
+				c.drawLine(x,horizontalLineDrawStartY,x,horizontalLineDrawEndY,p_frame);
 			} else {
-				c.drawLine(x,horizontalLineDrawStartY-(centerLineWidth/2),x,horizontalLineDrawEndY,p_waku);
+				c.drawLine(x,horizontalLineDrawStartY-(centerLineWidth/2),x,horizontalLineDrawEndY,p_frame);
 			}
 		}
 
 
-		// ポジション用ビットマップの設定
+		// Trigger position marker bitmap
 		pos_bitmap_height = heightDiv8/3;
 		pos_bitmap_width = pos_bitmap_height * (46.0/64.0);
 		hpos_bitmap_height = heightDiv8/3;
@@ -245,46 +238,41 @@ public class GraphView extends View {
 
 	private void drawTriggerLine(Canvas c){
 		if(isDrawVerticalLine){
-			c.drawLine(0,(float) v_trigger_pos,(float) width,(float) v_trigger_pos,p_VTriggerLight);		// 垂直トリガーライン描画
+			c.drawLine(0,(float) v_trigger_pos,(float) width,(float) v_trigger_pos,p_VTriggerLine);		 // Draw vertical trigger line
 		} else if(isDrawHorizontalLine){
-			c.drawLine((float) h_trigger_pos,0,(float) h_trigger_pos,(float) height,p_HTriggerLight);		// 水平トリガーライン描画
+			c.drawLine((float) h_trigger_pos,0,(float) h_trigger_pos,(float) height,p_HTriggerLine);		// Draw horizontal trigger line
 		} else if(isDrawBiasLine){
-			c.drawLine(0,(float) bias_pos,(float) width,(float) bias_pos,p_BiasLight);						// DCバイアスライン描画
+			c.drawLine(0,(float) bias_pos,(float) width,(float) bias_pos,p_BiasLine);						// Draw bias(position) line
 		}
 
-		// トリガー位置描画
-		//c.drawLine((float)h_trigger_pos,0,(float)h_trigger_pos,(float) (height*0.04f), p_HTriggerDeep);					//水平トリガーマーカー
-		//c.drawLine(0,(float) bias_pos,(float) (height*0.04f),(float) bias_pos,p_BiasDeep);
-		//c.drawLine((float) width,(float) v_trigger_pos,(float) (width-(height*0.04f)),(float) v_trigger_pos,p_VTriggerDeep);		//垂直トリガーマーカー
-		//if(D)Log.d(TAG,"h_trigger_pos" + Double.toString(h_trigger_pos));
+		// Draw trigger marker bitmap
 		c.drawBitmap(bm_pos_h, (float)(h_trigger_pos - (hpos_bitmap_width/2)), 0, null);
 		c.drawBitmap(bm_pos_b, 0, (float) (bias_pos-(pos_bitmap_height/2)), null);
 		c.drawBitmap(bm_pos_v, (float) (width-pos_bitmap_width), (float) (v_trigger_pos-(pos_bitmap_height/2)), null);
 
 	}
 
-	// 一番下が0 、上が1
+	// The bottom is 0 、Top is 1
 	private void drawWaveform(Canvas c){
-		// 波形を描画
 
-		//エラーチェック
+		// error check
 		if(width <= 0 || data.length <= 0)return;
 
-		final double[] sample = data;		// 描画中に変更されないように
+		final double[] sample = data;		// In order not to be changed during drawing
 		isNewWaveSet = false;
 
-		double deltaX;	// xの増分
-		double deltaI;	// iの増分
-		int numDrawLines;	// Line描画回数
+		double deltaX;
+		double deltaI;
+		int numDrawLines;	//  Number of drawing times
 
-		if(width > sampleLength){		//  グラフの幅 ＞ サンプル数　(高ドット密度)
-			// 描画回数は　サンプル数-1
+		if(width > sampleLength){		// Width of graph > Number of samples (high dot density)
+			// Number of drawing times is the number of samples -1
 			numDrawLines = sampleLength-1;
 			deltaX =  width / (double) numDrawLines;
 			deltaI = 1.0;
 
-		} else {						//  グラフの幅 ＜ サンプル数　（低ドット密度）
-			//　描画回数は　幅ピクセル数-1
+		} else {						// Width of graph < Number of samples (low dot density)
+			// The number of drawing times is the number of pixels of the graph width - 1
 			numDrawLines = ((int)width)-1;
 			deltaX = 1.0;
 			deltaI = (double) sampleLength / (double) numDrawLines;
@@ -296,7 +284,7 @@ public class GraphView extends View {
 
 		double fi = deltaI;		// floatのindex
 
-		// 座標セット
+		// Set the coordinates
 		final int loop_stop = wave.length-4;
 		for(int j = 2;; j += 4) {
 			wave[j] = (float) (wave[j-2] + deltaX);						// stop x
@@ -324,7 +312,7 @@ public class GraphView extends View {
     	return tmp;
     }
 
-    // 画面右端が1中央が0左端が-1
+    //The right end is 1,Center is 0,The left end is -1
     public void setHTriggerPos(double t){
     	if (t > 1.0){
     		t = 1.0;
@@ -338,7 +326,7 @@ public class GraphView extends View {
 		invalidate();
     }
 
-    // 一番下が０、一番上が１
+    // The bottom is 0, the top is 1
     public void setVTriggerPos(double t){
     	if (t<0) {
     		t = 0;
@@ -350,7 +338,7 @@ public class GraphView extends View {
     	invalidate();
     }
 
-    // 一番下が０、一番上が１
+    // The bottom is 0, the top is 1
     public void setBiasPos(double t){
     	if (t<0) {
     		t = 0;
@@ -363,7 +351,7 @@ public class GraphView extends View {
     }
 
     public void setWave(double []samples,int sampleLen){
-    	if((samples != null) && (samples.length > 0)){	// エラーチェック
+    	if((samples != null) && (samples.length > 0)){	// Error check
     		data = samples.clone();
     		isNewWaveSet = true;
     		sampleLength = sampleLen;
