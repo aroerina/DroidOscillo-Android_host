@@ -1,0 +1,23 @@
+# built application files
+*.apk
+*.ap_
+keystone
+ 
+# files for the dex VM
+*.dex
+ 
+# Java class files
+*.class
+ 
+# generated files
+bin/
+APK/
+ 
+# Local configuration file (sdk path, etc)
+local.properties
+ 
+# eclipse settings
+.classpath
+.settings/
+.metadata/
+RemoteSystemsTempFiles/
