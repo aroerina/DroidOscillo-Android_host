@@ -15,16 +15,16 @@ Please download .zip or clone and import into your workspace.
 
 ## File Description
 
-.\USBOscilloscopeHost\src\jp\limepulse\USBOscilloscopeHost\
-USBOscilloscopeHost.java: Class containing activities on the main screen
-GraphView.java: It is a class for drawing graphs
-
-
-.\USBOscilloscopeHost\res\raw
-m4.bin:
-m0.bin:
-Binary file corresponding to each core of LPC4370(DroidOscillo's MCU).
-The host application sends the firmware at startup.
+.\USBOscilloscopeHost\src\jp\limepulse\USBOscilloscopeHost\  
+USBOscilloscopeHost.java: Class containing activities on the main screen  
+GraphView.java: It is a class for drawing graphs  
+  
+  
+.\USBOscilloscopeHost\res\raw  
+m4.bin:  
+m0.bin:  
+Binary file corresponding to each core of LPC4370(DroidOscillo's MCU).  
+The host application sends the firmware at startup.  
  
 ## Licence
 
