@@ -25,6 +25,13 @@ m4.bin:
 m0.bin:  
 Binary file corresponding to each core of LPC4370(DroidOscillo's MCU).  
 The host application sends the firmware at startup.  
+
+## Related repositorys
+
+DroidOscillo Firmware: https://github.com/aroerina/DroidOscillo-Firmaware  
+DroidOscillo Board: https://github.com/aroerina/DoroidOscillo-Board  
+
+
  
 ## Licence
 
