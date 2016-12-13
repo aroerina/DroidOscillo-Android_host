@@ -31,6 +31,8 @@ The host application sends the firmware at startup.
 DroidOscillo Firmware: https://github.com/aroerina/DroidOscillo-Firmaware  
 DroidOscillo Board: https://github.com/aroerina/DoroidOscillo-Board  
 
+## Wiki
+https://github.com/aroerina/DroidOscillo-Android_host/wiki
 
  
 ## Licence
