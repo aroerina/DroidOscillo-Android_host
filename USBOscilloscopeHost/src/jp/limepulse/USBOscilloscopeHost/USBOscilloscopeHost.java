@@ -51,8 +51,8 @@ import android.widget.Toast;
 
 public class USBOscilloscopeHost extends Activity implements OnClickListener {
     // Debugging
-	private static final boolean D = false;		// Release
-	//private static final boolean D = true;			// Debug Mode
+	//private static final boolean D = false;		// Release
+	private static final boolean D = true;			// Debug Mode
 
     private static final String TAG = "USBOscilloscopeHost";
 	private static final String ACTION_USB_PERMISSION = "com.google.android.HID.action.USB_PERMISSION";
@@ -164,7 +164,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
     // Voltscale 9 full scale value
     public int vs9_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP) * 0.25);
     private double g_vpos_max,g_vpos_min;
-    private double opamp_feedback_fix_ratio = 1.0;
+    //private double opamp_feedback_fix_ratio = 1.0;
 
     //
     // BIAS
@@ -921,6 +921,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 		int []lawSamples;
 
 
+
 		@Override
 		public void run(){
 			// Acknowledge packet
@@ -950,12 +951,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 
         		if (inRequest.queue(ReceiveBuffer, BUFFER_SIZE) == true) {
 
-        			// éÛêMë“Çø
+        			// wait data receive
         			if (deviceConnection.requestWait() == inRequest){	//Request received
         				//if(D) Log.i(TAG, "Request received.");
         			}
 
-        			// AcknowledgeëóêM
+        			// Send acknowledge
         			deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 10);
 
         		}  else {
@@ -1066,7 +1067,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 	}
 
     private class GraphWave {
-    	double samples[];			// Sample with 1 as the whole graph
+    	double samples[];			// Sample with 1 as the graph height
     	double max=0,min=0,vpp=0;
     	double freq=0;
     	double vrms=0,mean=0;
@@ -1559,7 +1560,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener {
 			sendMessage(MESSAGE_RUNMODE,TGMODE_SINGLE_FREE);	//Free single shot mode
 
 		} else if(calibrateReceivedCount == (exe++)){		// get GND value
-			gndValue = getDC(samples);		// 5V divÇÃéûÇÃGNDíl
+			gndValue = getDC(samples);		// GND value at 5V/div
 
 	    	voltscale = VOLTSCALE_200MV;  // 200mV div
 	    	setVoltscale(true);
