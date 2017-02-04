@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+top bar
+
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="4dp"
+    android:orientation="horizontal" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <ImageView
+                android:id="@+id/img_connect"
+                android:layout_width="@dimen/fps_text_width"
+                android:layout_height="20dp"
+                android:src="@drawable/disconnect" />
+
+            <TextView
+                android:id="@+id/text_framerate"
+                android:layout_width="@dimen/fps_text_width"
+                android:layout_height="wrap_content"
+                android:background="@layout/simpleframe"
+                android:gravity="left"
+                android:text="FPS"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="12dp"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_h_trigger"
+                android:layout_width="@dimen/trigger_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="HT:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#55FF55"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/textVtrigger"
+                android:layout_width="@dimen/trigger_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="VT:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#FF5555"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_bias"
+                android:layout_width="@dimen/ps_text_width"
+                android:layout_height="wrap_content"
+                android:text="PS:"
+                android:textColor="#00FFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_trigger_mode"
+                android:layout_width="@dimen/ps_text_width"
+                android:layout_height="wrap_content"
+                android:text="@string/trigger_mode"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="normal" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_timescale"
+                android:layout_width="@dimen/division_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:text="Td:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_voltscale"
+                android:layout_width="@dimen/division_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vd:"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_vpp"
+                android:layout_width="@dimen/vpp_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vpp:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_freq"
+                android:layout_width="@dimen/vpp_text_width"
+                android:layout_height="wrap_content"
+                android:text="Freq"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/text_vrms"
+                android:layout_width="@dimen/vrms_text_width"
+                android:layout_height="wrap_content"
+                android:text="Vrms:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+            <TextView
+                android:id="@+id/text_mean"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mean:"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/default_text_size"
+                android:typeface="monospace" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left"
+            android:gravity="left"
+            android:orientation="vertical" >
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" >
+
+                <ImageView
+                    android:id="@+id/img_trigger"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/slope_up" />
+
+                <ImageView
+                    android:id="@+id/img_range"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginLeft="8dp"
+                    android:src="@drawable/over_range_in" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/text_run_stop"
+                android:layout_width="@dimen/run_text_width"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
+                android:background="@layout/simpleframe"
+                android:gravity="center_horizontal"
+                android:text="@string/run"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#00FF00"
+                android:textSize="@dimen/default_text_size" />
+
+        </LinearLayout>
+
+    </LinearLayout>

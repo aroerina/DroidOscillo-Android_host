@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+Right bar button array
+
+-->
+<ScrollView
+    		xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/scrollView1"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:paddingLeft="6dp" >
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingRight="4dp" >
+
+                <LinearLayout
+                    android:layout_width="@dimen/button_width"
+                    android:layout_height="fill_parent"
+                    android:orientation="vertical" >
+
+                    <ToggleButton
+                        android:id="@+id/tbtn_stop"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="ToggleButton"
+                        android:textOff="Stop"
+                        android:textOn="Stop"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/trig_mode_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="@string/trigger_mode_btn_text"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <ToggleButton
+                        android:id="@+id/tbtn_dccut"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="ToggleButton"
+                        android:textOff="DC CUT"
+                        android:textOn="DC CUT"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <ToggleButton
+                        android:id="@+id/tbtn_expand"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Expand"
+                        android:textOff="Expand"
+                        android:textOn="Expand"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <ToggleButton
+                        android:id="@+id/tbtn_x10"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="ToggleButton"
+                        android:textOff="Probe x10"
+                        android:textOn="Probe x10"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_edge"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Slope"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_calib"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Calib"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_bias_calib"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="BiasCalib"
+                        android:textSize="@dimen/button_text_size"
+                        android:visibility="visible" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="@dimen/button_width"
+                    android:layout_height="fill_parent"
+                    android:orientation="vertical" >
+
+                    <Button
+                        android:id="@+id/btn_zoomplus"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:drawableRight="@drawable/zoom_in_w"
+                        android:text="@string/td_plus"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_zoomminus"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:drawableRight="@drawable/zoom_out_w"
+                        android:text="@string/td_plus"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_vscale_minus"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:drawableRight="@drawable/zoom_in_w"
+                        android:text="Volt"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_vscale_plus"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:drawableRight="@drawable/zoom_out_w"
+                        android:text="Volt"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_autoset"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Autoset"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_setzero"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Set 0"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_setting"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="Setting"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
+                        android:id="@+id/btn_calib_value_reset"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/button_height"
+                        android:text="CVReset"
+                        android:textSize="@dimen/button_text_size"
+                        android:visibility="visible" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
