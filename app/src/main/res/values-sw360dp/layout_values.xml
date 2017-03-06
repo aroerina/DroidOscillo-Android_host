@@ -1,8 +1,8 @@
 <!--一文字あたり9dpほど -->
     <resources>
         <dimen name="default_text_size">14sp</dimen>
-        <dimen name="fps_text_width">42dp</dimen>
-        <dimen name="trigger_text_width">84dp</dimen>
+        <dimen name="fps_text_width">46dp</dimen>
+        <dimen name="trigger_text_width">86dp</dimen>
         <dimen name="ps_text_width">90dp</dimen>
         <dimen name="division_text_width">70dp</dimen>
         <dimen name="vpp_text_width">110dp</dimen>
@@ -11,4 +11,7 @@
         <dimen name="button_width">100dp</dimen>
         <dimen name="button_height">50dp</dimen>
         <dimen name="button_text_size">15sp</dimen>
+        <dimen name="voltage_dialog_list_width">205dp</dimen>
+        <dimen name="time_dialog_list_width">100dp</dimen>
+        <dimen name="time_dialog_list_text_size">14sp</dimen>
     </resources>

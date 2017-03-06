@@ -9,9 +9,10 @@
         android:layout_height="wrap_content"
         android:textSize="20sp"
         android:id="@+id/voltage_division_titile_text"
-        android:text="@string/select_voltage_division"
+        android:text="@string/select_time_division"
         android:padding="20dp"
-        android:textColor="@android:color/holo_blue_dark" />
+        android:textColor="@android:color/holo_blue_dark"
+        tools:text="Select  time division" />
 
     <View
         android:layout_width="match_parent"
@@ -26,21 +27,42 @@
         android:weightSum="1">
 
         <ListView
-            android:id="@+id/dialog_listView_L"
+            android:id="@+id/time_dialog_listView_0"
             android:layout_height="wrap_content"
-            android:layout_width="@dimen/voltage_dialog_list_width">
+            android:layout_width="@dimen/time_dialog_list_width">
         </ListView>
 
         <View
             android:layout_height="match_parent"
             android:background="@android:color/darker_gray"
-            android:id="@+id/h_divider_line"
             android:layout_width="1px" />
 
         <ListView
-            android:id="@+id/dialog_listView_R"
+            android:id="@+id/time_dialog_listView_1"
             android:layout_height="wrap_content"
-            android:layout_width="@dimen/voltage_dialog_list_width">
+            android:layout_width="@dimen/time_dialog_list_width">
+        </ListView>
+
+        <View
+            android:layout_height="match_parent"
+            android:background="@android:color/darker_gray"
+            android:layout_width="1px" />
+
+        <ListView
+            android:id="@+id/time_dialog_listView_2"
+            android:layout_height="wrap_content"
+            android:layout_width="@dimen/time_dialog_list_width">
+        </ListView>
+
+        <View
+            android:layout_height="match_parent"
+            android:background="@android:color/darker_gray"
+            android:layout_width="1px" />
+
+        <ListView
+            android:id="@+id/time_dialog_listView_3"
+            android:layout_height="wrap_content"
+            android:layout_width="@dimen/time_dialog_list_width">
         </ListView>
 
     </LinearLayout>

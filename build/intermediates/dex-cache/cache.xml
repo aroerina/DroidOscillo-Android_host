@@ -7,35 +7,98 @@
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
-        sha1="b8eaea0e5392c6d47cbac6f3fad4c76c86d764da">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\instant-run-bootstrap_a4da354f5f72d5622b89fe9448e471b944d72213\classes.dex" />
+        sha1="c746fcc586c088937e558f1c265131549ab80c43">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10000\instant-run-bootstrap_a4da354f5f72d5622b89fe9448e471b944d72213\classes.dex" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="C:\Dev\bin\Java\.android\build-cache\a18f7335a2e910646328fefb524e6da0cad889af\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="25.0.1"
+        sha1="8413c27b45b7fe61dca4a98159f65e2cee215f5a">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\classes_0dbf1a24ba1143150921c6c0682f7166f0a31dba.jar" />
     </item>
     <item
         is-multidex="true"
-        jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\exploded-aar\com.google.android.gms\play-services-base\8.4.0\jars\classes.jar"
+        jar="C:\Dev\bin\Java\.android\build-cache\a964949ff4e8d8a6d9c6d79ebe82ae26a3b54e4a\output\jars\classes.jar"
+        jumboMode="true"
+        optimize="true"
+        revision="25.0.1"
+        sha1="8e673cdfadd8f2d98fdb2fda2285c30f6e449782">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_5a7de6e1d9b14432c152b7ed8575dc0f231c09f3\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Dev\bin\Java\.android\build-cache\2227a64331aeda0d1517d16296bd2f13cead92c1\output\jars\classes.jar"
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
         sha1="fef2b3e4b6b1b0e5fe7b69fa137a5fa55a3182ab">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\com.google.android.gms-play-services-base-8.4.0_1cf9dac202fafa5721d4e0947db22b206e195db4\classes.dex" />
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_92b2c52312b49e45705b5b35378ff50c5f6e9fa6\classes.dex" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="C:\Dev\bin\Java\.android\build-cache\a964949ff4e8d8a6d9c6d79ebe82ae26a3b54e4a\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="25.0.1"
+        sha1="8e673cdfadd8f2d98fdb2fda2285c30f6e449782">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\classes_5a7de6e1d9b14432c152b7ed8575dc0f231c09f3.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="C:\Dev\bin\Java\.android\build-cache\2227a64331aeda0d1517d16296bd2f13cead92c1\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="25.0.1"
+        sha1="fef2b3e4b6b1b0e5fe7b69fa137a5fa55a3182ab">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\classes_92b2c52312b49e45705b5b35378ff50c5f6e9fa6.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="C:\Users\AROE\AppData\Local\Android\Sdk\extras\android\m2repository\com\android\support\support-annotations\23.0.0\support-annotations-23.0.0.jar"
+        jumboMode="true"
+        optimize="true"
+        revision="25.0.1"
+        sha1="990e7f98a7bad86a40b1f0bcfeb039023afd0839">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\support-annotations-23.0.0_7184cebaed87e29af2b187933f8d72a183400b74.jar" />
     </item>
     <item
         is-multidex="true"
-        jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\exploded-aar\com.google.android.gms\play-services-appindexing\8.4.0\jars\classes.jar"
+        jar="C:\Dev\bin\Java\.android\build-cache\a18f7335a2e910646328fefb524e6da0cad889af\output\jars\libs\internal_impl-23.0.0.jar"
+        jumboMode="true"
+        optimize="true"
+        revision="25.0.1"
+        sha1="8bd336eeae661e8311330284897ee07f8ebaa297">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\internal_impl-23.0.0_14e5b506b177f292948811f7ac588dc7b5775f2a\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Dev\bin\Java\.android\build-cache\179696590978e00b420afeecf88ebaccda253930\output\jars\classes.jar"
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
         sha1="65d086ee9daaf87b5af62ad24471edafa433354c">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\com.google.android.gms-play-services-appindexing-8.4.0_e23d9d100bacb149320fdf708c8c8fe6fbb763aa\classes.dex" />
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_90637cfe45a4ce6106a1351b06c4d0f62a382345\classes.dex" />
     </item>
     <item
-        is-multidex="true"
-        jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\exploded-aar\com.android.support\support-v4\23.0.0\jars\classes.jar"
-        jumboMode="true"
+        is-multidex="false"
+        jar="C:\Users\AROE\AppData\Local\Android\Sdk\extras\android\m2repository\com\android\support\support-annotations\23.0.0\support-annotations-23.0.0.jar"
+        jumboMode="false"
         optimize="true"
         revision="25.0.1"
-        sha1="8413c27b45b7fe61dca4a98159f65e2cee215f5a">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\com.android.support-support-v4-23.0.0_7149cc93b13f01f8fe70258b581897299f88ef48\classes.dex" />
+        sha1="990e7f98a7bad86a40b1f0bcfeb039023afd0839">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\support-annotations-23.0.0_7184cebaed87e29af2b187933f8d72a183400b74.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="C:\Dev\bin\Java\.android\build-cache\a18f7335a2e910646328fefb524e6da0cad889af\output\jars\libs\internal_impl-23.0.0.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="25.0.1"
+        sha1="8bd336eeae661e8311330284897ee07f8ebaa297">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\internal_impl-23.0.0_14e5b506b177f292948811f7ac588dc7b5775f2a.jar" />
     </item>
     <item
         is-multidex="true"
@@ -47,31 +110,31 @@
         <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\support-annotations-23.0.0_7184cebaed87e29af2b187933f8d72a183400b74\classes.dex" />
     </item>
     <item
+        is-multidex="false"
+        jar="C:\Dev\bin\Java\.android\build-cache\179696590978e00b420afeecf88ebaccda253930\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="25.0.1"
+        sha1="65d086ee9daaf87b5af62ad24471edafa433354c">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\classes_90637cfe45a4ce6106a1351b06c4d0f62a382345.jar" />
+    </item>
+    <item
         is-multidex="true"
         jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\incremental-runtime-classes\debug\instant-run.jar"
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
-        sha1="fef680ece3f53aa1b85342709e8d4b62cc8018fa">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\instant-run_0b3a75b59d515420dde2b2587c1f0c749a08791a\classes.dex" />
+        sha1="c82741bc129dd5f99f11a4ab8666ae24262053b6">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10000\instant-run_0b3a75b59d515420dde2b2587c1f0c749a08791a\classes.dex" />
     </item>
     <item
         is-multidex="true"
-        jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\exploded-aar\com.android.support\support-v4\23.0.0\jars\libs\internal_impl-23.0.0.jar"
+        jar="C:\Dev\bin\Java\.android\build-cache\a18f7335a2e910646328fefb524e6da0cad889af\output\jars\classes.jar"
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
-        sha1="8bd336eeae661e8311330284897ee07f8ebaa297">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\internal_impl-23.0.0_b292b910a34d73c11dec1c0d2264709578bcce98\classes.dex" />
-    </item>
-    <item
-        is-multidex="true"
-        jar="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\exploded-aar\com.google.android.gms\play-services-basement\8.4.0\jars\classes.jar"
-        jumboMode="true"
-        optimize="true"
-        revision="25.0.1"
-        sha1="8e673cdfadd8f2d98fdb2fda2285c30f6e449782">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\com.google.android.gms-play-services-basement-8.4.0_a80af34a3197ac2e82c5182cd9a29d25efd69b0b\classes.dex" />
+        sha1="8413c27b45b7fe61dca4a98159f65e2cee215f5a">
+        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_0dbf1a24ba1143150921c6c0682f7166f0a31dba\classes.dex" />
     </item>
 
 </items>

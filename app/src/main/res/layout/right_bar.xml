@@ -9,7 +9,7 @@ Right bar button array
             android:id="@+id/scrollView1"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:paddingLeft="6dp" >
+            android:paddingLeft="2dp" >
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -73,6 +73,13 @@ Right bar button array
                         android:textSize="@dimen/button_text_size" />
 
                     <Button
+                        android:text="FFT"
+                        android:layout_width="match_parent"
+                        android:id="@+id/btn_fft"
+                        android:layout_height="@dimen/button_height"
+                        android:textSize="@dimen/button_text_size" />
+
+                    <Button
                         android:id="@+id/btn_calib"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/button_height"
@@ -94,7 +101,7 @@ Right bar button array
                     android:orientation="vertical" >
 
                     <Button
-                        android:id="@+id/btn_zoomplus"
+                        android:id="@+id/btn_time_zoom"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/button_height"
                         android:drawableRight="@drawable/zoom_in_w"
@@ -102,7 +109,7 @@ Right bar button array
                         android:textSize="@dimen/button_text_size" />
 
                     <Button
-                        android:id="@+id/btn_zoomminus"
+                        android:id="@+id/btn_time_unzoom"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/button_height"
                         android:drawableRight="@drawable/zoom_out_w"
@@ -110,7 +117,7 @@ Right bar button array
                         android:textSize="@dimen/button_text_size" />
 
                     <Button
-                        android:id="@+id/btn_vscale_minus"
+                        android:id="@+id/btn_volt_zoom"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/button_height"
                         android:drawableRight="@drawable/zoom_in_w"
@@ -118,7 +125,7 @@ Right bar button array
                         android:textSize="@dimen/button_text_size" />
 
                     <Button
-                        android:id="@+id/btn_vscale_plus"
+                        android:id="@+id/btn_volt_unzoom"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/button_height"
                         android:drawableRight="@drawable/zoom_out_w"

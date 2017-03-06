@@ -11,4 +11,7 @@
         <dimen name="button_width">160dp</dimen>
         <dimen name="button_height">65dp</dimen>
         <dimen name="button_text_size">20sp</dimen>
+        <dimen name="voltage_dialog_list_width">240dp</dimen>
+        <dimen name="time_dialog_list_width">130dp</dimen>
+        <dimen name="time_dialog_list_text_size">22sp</dimen>
     </resources>

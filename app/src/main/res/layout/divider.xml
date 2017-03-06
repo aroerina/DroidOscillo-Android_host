@@ -4,5 +4,4 @@
         android:drawable="@drawable/divider_item"
         android:top="5dp"
         android:bottom="5dp" />
-
 </layer-list>

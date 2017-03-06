@@ -8,8 +8,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import jp.limepulse.USBOscilloscopeHost.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -22,7 +20,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -36,7 +33,8 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
-import android.webkit.WebView.FindListener;
+import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -55,16 +53,11 @@ import android.hardware.usb.UsbManager;
 import android.hardware.usb.UsbRequest;
 import android.widget.Toast;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
-import com.google.android.gms.common.api.GoogleApiClient;
-
 
 public class USBOscilloscopeHost extends Activity implements OnClickListener, OnLongClickListener {
     // Debugging
-    //private static final boolean D = false;		// Release
-    private static final boolean D = true;            // Debug Mode
+    private boolean D = false;		// Release
+    //private boolean D = true;            // Debug Mode
 
     private static final String TAG = "USBOscilloscopeHost";
     private static final String ACTION_USB_PERMISSION = "com.google.android.HID.action.USB_PERMISSION";
@@ -142,7 +135,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     public static final int TGMODE_DEVICE_STOP = 0;
     public static final int SAMPLE_MAX = 4095;
 
-    public static final int BUFFER_SIZE = 1600;
+    public static final int READ_BUFFER_SIZE = 1600;
     public static final int DEFAULT_SAMPLE_LENGTH = 800;
     public static final int DEFAULT_DIV_LENGTH = DEFAULT_SAMPLE_LENGTH / 10;
 
@@ -226,8 +219,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private TextView FrameRateText, triggerModeText, TimescaleText, HPotisionText, VPotisionText;
     private TextView RunStopText, BiasText, VoltscaleText, VppText, FreqText, VrmsText, MeanText;
     private Button trig_mode_button, calibration_btn, edge_btn, btn_test1, btn_test2;
-    private Button td_zoom_btn, td_unzoom_btn, vs_plus_btn, vs_minus_btn, btn_setzero;
-    private Button btn_autoset, btn_setting;
+    private Button td_zoom_btn, td_unzoom_btn, btn_volt_zoom, btn_volt_unzoom, btn_setzero;
+    private Button btn_autoset, btn_setting,btn_fft;
     private ToggleButton tbtn_dccut, tbtn_stop, tbtn_xp, tbtn_x10;
     private ScaleGestureDetector gestureDetector;
     private GestureListener simpleListener;
@@ -259,7 +252,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private boolean isConnected = false;
     private boolean autoModeNormal = false;
     private AutoModeTimerTask autoModeTask;
-    private UsbRequest inRequest;
+    private UsbReceiveTask usbReceiveTask;
+
     Handler mHandler;
     PendingIntent mPermissionIntent;
     private boolean enableFlashText = true;        // For disable flash text at startup
@@ -278,12 +272,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     //g_hpos : 0 is the center. -1 is the left edge of the graph. 1 is the right end of the graph
     private double g_bias_pos, g_vpos, g_hpos;
     private GraphWave wave;
-    private boolean long_click_detected = false;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    private GoogleApiClient client;
+    //private boolean long_click_detected = false;
 
 
     // Constructor
@@ -436,24 +425,28 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         img_connect = (ImageView) findViewById(R.id.img_connect);
         img_range = (ImageView) findViewById(R.id.img_range);
 
-        td_zoom_btn = (Button) findViewById(R.id.btn_zoomplus);
+        btn_fft = (Button) findViewById(R.id.btn_fft);
+        btn_fft.setOnClickListener(this);
+        td_zoom_btn = (Button) findViewById(R.id.btn_time_zoom);
         td_zoom_btn.setOnClickListener(this);
         td_zoom_btn.setOnLongClickListener(this);
-        td_unzoom_btn = (Button) findViewById(R.id.btn_zoomminus);
+        td_unzoom_btn = (Button) findViewById(R.id.btn_time_unzoom);
         td_unzoom_btn.setOnClickListener(this);
         td_unzoom_btn.setOnLongClickListener(this);
-        vs_plus_btn = (Button) findViewById(R.id.btn_vscale_plus);
-        vs_plus_btn.setOnClickListener(this);
-        vs_plus_btn.setOnLongClickListener(this);
-        vs_minus_btn = (Button) findViewById(R.id.btn_vscale_minus);
-        vs_minus_btn.setOnClickListener(this);
-        vs_minus_btn.setOnLongClickListener(this);
+        btn_volt_zoom = (Button) findViewById(R.id.btn_volt_zoom);
+        btn_volt_zoom.setOnClickListener(this);
+        btn_volt_zoom.setOnLongClickListener(this);
+        btn_volt_unzoom = (Button) findViewById(R.id.btn_volt_unzoom);
+        btn_volt_unzoom.setOnClickListener(this);
+        btn_volt_unzoom.setOnLongClickListener(this);
         edge_btn = (Button) findViewById(R.id.btn_edge);
         edge_btn.setOnClickListener(this);
         btn_setzero = (Button) findViewById(R.id.btn_setzero);
         btn_setzero.setOnClickListener(this);
         btn_autoset = (Button) findViewById(R.id.btn_autoset);
         btn_autoset.setOnClickListener(this);
+        btn_fft = (Button) findViewById(R.id.btn_fft);
+        btn_fft.setOnClickListener(this);
 
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
 
@@ -469,7 +462,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             btn_test2.setVisibility(View.GONE);
             calibration_btn.setVisibility(View.GONE);
             btn_setting.setVisibility(View.GONE);
-
+            btn_fft.setVisibility(View.GONE);
             scview.computeScroll();        // Update UI
         } else {
             btn_test1.setOnClickListener(this);
@@ -540,11 +533,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         tbtn_dccut.setChecked(dc_cut);
         tbtn_xp.setChecked(expand);
 
-        // getDP
+        // get DP
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         float dpHeight = displayMetrics.heightPixels / displayMetrics.density;
         float dpWidth = displayMetrics.widthPixels / displayMetrics.density;
-        Log.d("DEBUG", "Width->" + dpWidth + ",Height=>" + dpHeight);
+        Log.d("DEBUG", "Display density pixel Width->" + dpWidth + ",Height=>" + dpHeight);
 
 
         // Timer to run every second
@@ -573,27 +566,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 });
             }
         }, 0, 1000L);
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    public Action getIndexApiAction() {
-        Thing object = new Thing.Builder()
-                .setName("USBOscilloscopeHost Page") // TODO: Define a title for the content shown.
-                // TODO: Make sure this auto-generated URL is correct.
-                .setUrl(Uri.parse("http://[ENTER-YOUR-URL-HERE]"))
-                .build();
-        return new Action.Builder(Action.TYPE_VIEW)
-                .setObject(object)
-                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
-                .build();
-    }
 
     private class USBBroadcastReceiver extends BroadcastReceiver {
 
@@ -623,11 +597,26 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {        // If the device is disconnected while it is running
                 Log.i(TAG, "device disconnected");
                 if (ReceiveThread != null) {
-                    isConnected = false;
                     ReceiveThread.EndConnection();
-                    SendTimer.cancel();
-                    img_connect.setImageResource(R.drawable.disconnect);
                 }
+
+                if(SendTimer != null) {
+                    SendTimer.cancel();
+                }
+
+                if(autoModeTask!=null) {
+                    autoModeTask.cancel();
+                }
+
+                if(usbReceiveTask != null) {
+                    usbReceiveTask.cancel();
+                }
+
+                isConnected = false;
+                img_connect.setImageResource(R.drawable.disconnect);
+                calibration = false;
+                biasCalibState = 0;
+                autoSetState = 0;
             }
 
 
@@ -672,8 +661,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         if (mUsbManager.hasPermission(device) == false) {    // Check USB connect permeation
             Log.e(TAG, "DEVICE has no parmission!");
-//				mUsbManager.requestPermission(device, mPermissionIntent);
-//				return;
+			//mUsbManager.requestPermission(device, mPermissionIntent);     // show permission request dialog
+            //return;
         }
         ;
         //
@@ -789,6 +778,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         ReceiveThread = new UsbReceiveThread();
         ReceiveThread.start();
+
+//        usbReceiveTask = new UsbReceiveTask();
+//        new Timer().scheduleAtFixedRate(usbReceiveTask, 0,6L);
+
 
         isConnected = true;
 
@@ -958,6 +951,145 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
     }
 
+    private class UsbReceiveTask extends TimerTask {
+
+        private byte[] SendBuffer,ReceiveBuffer;
+        double[] g_wave;
+        int[] lawSamples;
+
+        UsbReceiveTask(){
+            // Acknowledge packet
+            SendBuffer = new byte[EpOutPacketSize];
+            SendBuffer[0] = MESSAGE_DATA_RECEIVED;
+
+            ReceiveBuffer = new byte[READ_BUFFER_SIZE];
+
+            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
+            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];    // law value samples
+        }
+
+        @Override
+        public void run() {
+
+            // error check
+            if(deviceConnection == null || endPointRead == null || isConnected==false){
+                // deviceConnection shutdown
+                EndConnection();
+                return;
+            }
+
+            //if (D) Log.e(TAG, "USB Data receive waiting");
+
+            int ret;
+            ret = deviceConnection.bulkTransfer(endPointRead,ReceiveBuffer,READ_BUFFER_SIZE,1);
+
+
+            if (ret > 0) {
+                // Send acknowledge
+                deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
+
+            } else {
+                //if (D) Log.e(TAG, "Usb data receive error occured");
+                //EndConnection();    // thread stop
+                return;
+            }
+
+
+            int j=0;
+            for (int i = 0; i < sampleLength; i++) {
+                lawSamples[i] = byte_to_halfword(ReceiveBuffer[j+1],ReceiveBuffer[j]);
+                j+=2;
+            }
+
+            // Convert to data with graph height set to 0~1
+            for (int i = 0; i < sampleLength; i++) {
+                g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
+            }
+
+            wave = new GraphWave(g_wave);        // wave analysis
+
+            mHandler.post(new Runnable() {
+                public void run() {
+                    if (calibration == true) {
+                        calibrate(lawSamples);
+                    }
+
+                    if (biasCalibState > 0) {
+                        biasCalib(lawSamples);
+                    }
+
+                    if (autoSetState > 0) {
+                        autoSet();
+                    }
+
+                    drawGraph();
+                }
+            });
+
+                //debug
+//    			Log.d(TAG,"DC = "+Integer.toString(getDC(lawSamples)));
+//    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
+
+        }
+
+        private void drawGraph() {
+
+            mGraph.setWave(wave.samples, sampleLength);    // draw graph
+
+            if (triggerMode == TGMODE_AUTO && run_status == true) {    // if Auto mode
+
+                // Trigger detection
+
+                boolean lower = !triggerSlopeUp;
+                boolean triggerDetect = false;
+                for (int i = 0; i < sampleLength; i++) {
+                    if (wave.samples[i] >= g_vpos) {    // Sample value exceeds trigger
+                        if (triggerSlopeUp && lower) {
+                            triggerDetect = true;
+                            break;
+                        }
+
+                        lower = false;
+                    } else {                            // Sample value is less than trigger
+                        if (!triggerSlopeUp && !lower) {
+                            triggerDetect = true;
+                            break;
+                        }
+
+                        lower = true;
+                    }
+                }
+
+                if (triggerDetect) {
+                    //
+                    // トリガーを検出した
+                    //
+
+                    if (autoModeNormal == false) {    // AUTO FREE
+                        autoModeNormal = true;
+                        sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);    // set NORMAL mode
+                    } else {                        // AUTO NORMAL
+                        autoModeTask.timeReset();    // Timer counter reset
+                    }
+                }
+            } else if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
+
+                // On the device side, since it will change freely internally, there is no need to send runninng mode change
+                runModeSetStop();
+
+                tbtn_stop.setChecked(true);
+                if (D) Log.d(TAG, "Stop botton set cheched");
+            }
+        }
+
+        public void EndConnection() {
+            deviceConnection = null;
+            endPointRead = null;
+            epw_Msg = null;
+            mGraph.endThread();
+            isConnected = false;
+        }
+    }
 
     private class UsbReceiveThread extends Thread {
 
@@ -965,7 +1097,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         private byte[] SendBuffer;
         double[] g_wave;
         int[] lawSamples;
-
+        UsbRequest inRequest;
 
         @Override
         public void run() {
@@ -973,7 +1105,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             SendBuffer = new byte[EpOutPacketSize];
             SendBuffer[0] = MESSAGE_DATA_RECEIVED;
 
-            ReceiveBuffer = ByteBuffer.allocate(1600);
+            ReceiveBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
             ReceiveBuffer.order(ByteOrder.LITTLE_ENDIAN);    // set endian
 
             inRequest = new UsbRequest();
@@ -994,18 +1126,23 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             //
             while (deviceConnection != null && endPointRead != null && isConnected) {
 
-                if (inRequest.queue(ReceiveBuffer, BUFFER_SIZE) == true) {
+                if (inRequest.queue(ReceiveBuffer, READ_BUFFER_SIZE) == true) {
 
+                    if(D) Log.i(TAG, "Request waiting...");
                     // wait data receive
                     if (deviceConnection.requestWait() == inRequest) {    //Request received
-                        //if(D) Log.i(TAG, "Request received.");
+                        if(D) Log.i(TAG, "Request received.");
+                    } else {
+                        if (D) Log.e(TAG, "In Request waiting error occured");
+                        EndConnection();    // thread stop
+                        break;
                     }
 
                     // Send acknowledge
-                    deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 10);
+                    deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
 
                 } else {
-                    if (D) Log.e(TAG, "Request wait error occured");
+                    if (D) Log.e(TAG, "Request queueing error occured");
                     EndConnection();    // thread stop
                     break;
                 }
@@ -1047,6 +1184,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 //    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
 
             }
+
+            inRequest.cancel();
+            inRequest.close();
+            inRequest = null;
 
             // deviceConnection shutdown
             deviceConnection = null;
@@ -1117,7 +1258,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         double freq = 0;
         double vrms = 0, mean = 0;
         int num_waves = 0;
-        int range_status = 0;            // 0= range in ,1=up over,2=down over,3=bi side over
+        public int range_status = 0;            // 0= range in ,1=up over,2=down over,3=bi side over
         final static int RANGE_IN = 0, RANGE_UP_OVER = 1, RANGE_DOWN_OVER = 2, RANGE_BISIDE_OVER = 3;
 
         GraphWave(double gwave[]) {
@@ -1152,11 +1293,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             mHandler.post(new Runnable() {
                 public void run() {
-                    if (wave.range_status == RANGE_IN) {
+                    if (range_status == RANGE_IN) {
                         img_range.setImageResource(R.drawable.over_range_in);
-                    } else if (wave.range_status == RANGE_UP_OVER) {
+                    } else if (range_status == RANGE_UP_OVER) {
                         img_range.setImageResource(R.drawable.over_range_up);
-                    } else if (wave.range_status == RANGE_DOWN_OVER) {
+                    } else if (range_status == RANGE_DOWN_OVER) {
                         img_range.setImageResource(R.drawable.over_range_down);
                     } else {
                         img_range.setImageResource(R.drawable.over_range_bi);
@@ -1448,7 +1589,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     public void setVTrigger(boolean isSendData) {
 
         verTriggerValue = (int) (g_vpos * graph_fullscale + graph_min);
-        if (D && isSendData) Log.d(TAG, "verTriggerValue = " + Integer.toString(verTriggerValue));
+        //if (D && isSendData) Log.d(TAG, "verTriggerValue = " + Integer.toString(verTriggerValue));
         if (isSendData) {
 
             if (verTriggerValue > SAMPLE_MAX) {
@@ -1518,8 +1659,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
     }
 
+    public void changeVoltscale(int vs){
+        voltscale = vs;
+    }
 
-    private void setVoltscale(boolean isSendData) {
+    public void changeTimescale(int ts){
+        timescale = ts;
+    }
+
+    public void setVoltscale(boolean isSendData) {
 
         if (isSendData) {
             sendMessage(MESSAGE_VOLTAGE_SCALE, voltscale);
@@ -1540,14 +1688,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
 //		//hide button
 //		if(voltscale==0){
-//			vs_plus_btn.setVisibility(View.INVISIBLE);
-//			vs_minus_btn.setVisibility(View.VISIBLE);
+//			btn_volt_zoom.setVisibility(View.INVISIBLE);
+//			btn_volt_unzoom.setVisibility(View.VISIBLE);
 //		} else if(voltscale==(NUM_VOLTSCALE-1)){
-//			vs_plus_btn.setVisibility(View.VISIBLE);
-//			vs_minus_btn.setVisibility(View.INVISIBLE);
+//			btn_volt_zoom.setVisibility(View.VISIBLE);
+//			btn_volt_unzoom.setVisibility(View.INVISIBLE);
 //		} else {
-//			vs_plus_btn.setVisibility(View.VISIBLE);
-//			vs_minus_btn.setVisibility(View.VISIBLE);
+//			btn_volt_zoom.setVisibility(View.VISIBLE);
+//			btn_volt_unzoom.setVisibility(View.VISIBLE);
 //		}
 
         setupVerticalAxis();
@@ -2098,17 +2246,17 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             if (beginSpan > endSpan) {    // Pinch in
                 if (axisIsX) {    // Horizontal
-                    td_unzoom_btn.performClick();    // Time +
+                    td_unzoom_btn.performClick();    // Time-
                 } else {        // Vertical
                     if (D) Log.d(TAG, "onScaleEnd :Detect pinch in axis vertical");
-                    vs_plus_btn.performClick();        // Volt +
+                    btn_volt_unzoom.performClick();  // Volt-
                 }
             } else {                    // Pinch out
                 if (axisIsX) {    // Horizontal
-                    td_zoom_btn.performClick();        // Time -
+                    td_zoom_btn.performClick();      // Time+
                 } else {        // Vertical
                     if (D) Log.d(TAG, "onScaleEnd :Detect Pinch out");
-                    vs_minus_btn.performClick();    // Volt -
+                    btn_volt_zoom.performClick();    // Volt+
                 }
             }
 
@@ -2254,10 +2402,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
 
     public static class VoltageDivisionSelectDialog extends DialogFragment {
+
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             // Use the Builder class for convenient dialog construction
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
             // make custom dialog
             LayoutInflater inflater = (LayoutInflater) getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -2265,19 +2414,148 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             builder.setView(content);
 
-            voltageDivListR = (ListView) content.findViewById(R.id.listView1);
-            voltageDivListL = (ListView) content.findViewById(R.id.listView2);
+            voltageDivListL = (ListView) content.findViewById(R.id.dialog_listView_L);
+            voltageDivListR = (ListView) content.findViewById(R.id.dialog_listView_R);
 
-            String[] members = {"1", "2", "3", "4"};
+            final String[] list_l = {"5V", "2V", "1V", "500mV","200mV"};
+            final String[] list_r = {"100mV","50mV","20mV","10mV","5mV"};
 
-            ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(), R.layout.voltage_div_list, members);
+            ArrayAdapter<String> adapter_l = new ArrayAdapter<String>(getActivity(), R.layout.voltage_div_list_item, list_l);
+            ArrayAdapter<String> adapter_r = new ArrayAdapter<String>(getActivity(), R.layout.voltage_div_list_item, list_r);
+            voltageDivListL.setAdapter(adapter_l);
+            voltageDivListR.setAdapter(adapter_r);
 
-            voltageDivListR.setAdapter(adapter);
-            voltageDivListL.setAdapter(adapter);
+            // get main activity instance
+            final USBOscilloscopeHost main_act = (USBOscilloscopeHost)getActivity();
+
+            //TextView selectItem = (TextView) content.findViewById((int)voltageDivListL.getItemIdAtPosition(2));
+
+
+            voltageDivListL.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    main_act.changeVoltscale(position);
+                    main_act.setVoltscale(true);
+                    Log.i(TAG,Integer.toString(voltageDivListL.getChildCount()));
+                    dismiss();
+                }
+            });
+
+            voltageDivListR.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                  @Override
+                  public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                      main_act.changeVoltscale(position+5);
+                      main_act.setVoltscale(true);
+                      dismiss();
+                  }
+            });
 
             // Create the AlertDialog object and return it
             return builder.create();
         }
+
+    }
+
+    public static class TimeDivisionSelectDialog extends DialogFragment {
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            // Use the Builder class for convenient dialog construction
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+            // make custom dialog
+            LayoutInflater inflater = (LayoutInflater) getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View content = inflater.inflate(R.layout.time_division_dialog, null);
+
+            builder.setView(content);
+            final int num_list = 4;
+
+            ListView[] time_dialog_list = new ListView[4];
+            time_dialog_list[0] = (ListView) content.findViewById(R.id.time_dialog_listView_0);
+            time_dialog_list[1] = (ListView) content.findViewById(R.id.time_dialog_listView_1);
+            time_dialog_list[2] = (ListView) content.findViewById(R.id.time_dialog_listView_2);
+            time_dialog_list[3] = (ListView) content.findViewById(R.id.time_dialog_listView_3);
+
+            final String[][] time_list = {
+                    {"1s","500ms","250ms","100ms","50ms","25ms"},
+                    {"10ms","5ms","2.5ms","1ms","500us","250us"},
+                    {"100us","50us","25us","10us","5us","2.5us"},
+                    {"1us","500ns","250ns","100ns","50ns","25ns"}
+            };
+
+            ArrayAdapter<String> []adapters = new ArrayAdapter[4];
+            for(int i=0;i<num_list;i++){
+                adapters[i] = new ArrayAdapter<String>(getActivity(), R.layout.voltage_div_list_item, time_list[i]);
+                time_dialog_list[i].setAdapter(adapters[i]);
+            }
+
+
+            // get main activity instance
+            final USBOscilloscopeHost main_act = (USBOscilloscopeHost)getActivity();
+
+
+
+            //TextView selectItem = (TextView) content.findViewById((int)voltageDivListL.getItemIdAtPosition(2));
+
+
+            time_dialog_list[0].setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    main_act.changeTimescale(TIMESCALE_1S-position);
+                    main_act.setTimescale();
+                    dismiss();
+                }
+            });
+
+            time_dialog_list[1].setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    main_act.changeTimescale(TIMESCALE_10MS-position);
+                    main_act.setTimescale();
+                    dismiss();
+                }
+            });
+
+            time_dialog_list[2].setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    main_act.changeTimescale(TIMESCALE_100US-position);
+                    main_act.setTimescale();
+                    dismiss();
+                }
+            });
+
+            time_dialog_list[3].setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    main_act.changeTimescale(TIMESCALE_1US-position);
+                    main_act.setTimescale();
+                    dismiss();
+                }
+            });
+
+
+            // Create the AlertDialog object and return it
+            return builder.create();
+        }
+
+        @Override
+        public void onActivityCreated(Bundle savedInstanceState) {
+            super.onActivityCreated(savedInstanceState);
+
+            Dialog dialog = getDialog();
+
+            WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
+
+            DisplayMetrics metrics = getResources().getDisplayMetrics();
+            int dialogWidth = (int) (metrics.widthPixels * 0.9);
+            int dialogHeight = (int) (metrics.heightPixels * 0.6);
+
+            lp.width = dialogWidth;
+            lp.height = dialogHeight;
+            dialog.getWindow().setAttributes(lp);
+        }
+
     }
 
     @Override
@@ -2285,10 +2563,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         if (autoSetState > 0) return;        // Invalid operation during Autosetting
 
-        if (long_click_detected) {
-            long_click_detected = false;
-            return;
-        }
+//        if (long_click_detected) {
+//            long_click_detected = false;
+//            return;
+//        }
 
         int id = v.getId();
 
@@ -2335,6 +2613,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             // Start calibration button
             case R.id.btn_calib:
 
+                if (isConnected == false) return;
+
                 calibration = !calibration;
                 if (calibration == true) {
                     calibrateReceivedCount = 0;
@@ -2342,8 +2622,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 }
                 break;
 
-            // Voltage scale + button
-            case R.id.btn_vscale_plus:
+            // Voltage scale - button
+            case R.id.btn_volt_unzoom:
                 if (0 < voltscale) {
                     voltscale--;
                     setVoltscale(true);
@@ -2355,8 +2635,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 }
                 break;
 
-            // Voltage scale- button
-            case R.id.btn_vscale_minus:
+            // Voltage scale+ button
+            case R.id.btn_volt_zoom:
 
                 if ((NUM_VOLTSCALE - 1) > voltscale) {
                     voltscale++;
@@ -2370,7 +2650,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
 
             // Time scale+ button
-            case R.id.btn_zoomplus:
+            case R.id.btn_time_zoom:
                 if (0 < timescale) {
                     timescale--;
                     setTimescale();
@@ -2382,7 +2662,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 break;
 
             // Time scale- button
-            case R.id.btn_zoomminus:
+            case R.id.btn_time_unzoom:
                 if ((NUM_TIMESCALE - 1) > timescale) {
                     timescale++;
                     setTimescale();
@@ -2414,9 +2694,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
                 if (expand == false) {
                     expand = true;
-                    Toast.makeText(this, "Marker movement amount expansion has been enabled.", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(this, "Marker movement amount expansion has been enabled.", Toast.LENGTH_SHORT).show();
                 } else {    // == true
-                    Toast.makeText(this, "Marker movement amount expansion has been disabled.", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(this, "Marker movement amount expansion has been disabled.", Toast.LENGTH_SHORT).show();
                     expand = false;
                 }
                 break;
@@ -2489,10 +2769,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             case R.id.btn_calib_value_reset:
 
-                if (isConnected == false) {
-                    return;
-                }
-
                 highdiv_input_calib_voltage = 0;
                 lowdiv_input_calib_voltage = 0;
                 highdiv_opa_diff = 0;
@@ -2503,6 +2779,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 setupVerticalAxis();
                 break;
 
+            case R.id.btn_fft:
+                byte[] SendBuffer;
+                SendBuffer = new byte[EpOutPacketSize];
+                SendBuffer[0] = MESSAGE_DATA_RECEIVED;
+                deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
+                break;
+
+
             default:
 
 
@@ -2511,34 +2795,23 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     @Override
     public boolean onLongClick(View v) {
-        long_click_detected = true;
+        if(D) Log.d(TAG,"onLongClick");
+
+        //long_click_detected = true;
         int id = v.getId();
 
         switch (id) {
 
-            case R.id.btn_zoomminus:
-            case R.id.btn_zoomplus:
+            case R.id.btn_time_unzoom:
+            case R.id.btn_time_zoom:
 
-
+                new TimeDivisionSelectDialog().show(getFragmentManager(), "test");
                 break;
 
-            case R.id.btn_vscale_minus:
-            case R.id.btn_vscale_plus:
-
-                //final String[] items = {"AUTO", "NORMAL", "FREERUN" , "SINGLE SHOT"};
-//        		new AlertDialog.Builder(this)
-//        		        .setTitle("Select voltage division")
-//        		        .setItems(VOLT_SCALE_LIST, new DialogInterface.OnClickListener() {
-//        		            @Override
-//        		            public void onClick(DialogInterface dialog, int which) {
-//        		                // item_which pressed
-//        		            	voltscale = which;
-//        		            	setVoltscale(true);
-//        		            }
-//        		        })
-//        		        .show();
-
+            case R.id.btn_volt_unzoom:
+            case R.id.btn_volt_zoom:
                 new VoltageDivisionSelectDialog().show(getFragmentManager(), "test");
+
                 break;
 
             default:
@@ -2547,20 +2820,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         }
 
-
+        if(D) Log.d(TAG,"onLongClick end");
         return false;
     }
 
 
     @Override
     public void onStart() {
-        super.onStart();// ATTENTION: This was auto-generated to implement the App Indexing API.
-// See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.connect();
+        super.onStart();
         if (D) Log.i(TAG, "++ ON START ++");
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.start(client, getIndexApiAction());
     }
 
     private boolean isGraphInit = false;
@@ -2634,13 +2902,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     @Override
     public void onStop() {
-        super.onStop();// ATTENTION: This was auto-generated to implement the App Indexing API.
-// See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.end(client, getIndexApiAction());
+        super.onStop();
         if (D) Log.i(TAG, "-- ON STOP --");
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.disconnect();
     }
 
     @Override

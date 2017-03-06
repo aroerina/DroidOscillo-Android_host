@@ -29,13 +29,26 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
 
-        <jp.limepulse.USBOscilloscopeHost.GraphView
-            android:id="@+id/Graph"
+        <LinearLayout
+            android:orientation="vertical"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="2dp"
-            android:layout_marginBottom="2dp"
-            android:layout_marginRight="4dp" />
+            android:layout_height="wrap_content">
+
+            <view
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                class="android.support.v4.widget.Space"
+                android:id="@+id/sub_graph"
+                android:layout_weight="1" />
+
+            <jp.limepulse.USBOscilloscopeHost.GraphView
+                android:id="@+id/Graph"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="2dp"
+                android:layout_marginBottom="2dp"
+                android:layout_marginRight="4dp" />
+        </LinearLayout>
 
         <include layout="@layout/right_bar" />
 

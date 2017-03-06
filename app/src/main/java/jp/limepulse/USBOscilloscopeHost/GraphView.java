@@ -506,7 +506,7 @@ public class GraphView extends View {
 			// The number of drawing times is the number of pixels of the graph width - 1
 			numDrawLines = ((int)width)-1;
 			deltaX = 1.0;
-			deltaI = (double) sampleLength / (double) numDrawLines;
+			deltaI = (double) (sampleLength-1) / (double) numDrawLines;
 		}
 
 		float[] wave = new float[numDrawLines*4];
@@ -526,6 +526,8 @@ public class GraphView extends View {
 			wave[j+2] = wave[j];								// start x
 			wave[j+3] = wave[j+1];								// start y
 			fi += deltaI;
+
+			//if(fi >= sample.length)fi = sample.length-1;		// out of bounce error prevention
 		}
 
 
@@ -562,7 +564,7 @@ public class GraphView extends View {
 			int tmp = (int)(gradiation * (255*0.5));
 			p_HTText.setAlpha(tmp);
 			p_HTriggerLine.setAlpha(tmp);
-			p_HTArea.setAlpha((int)(gradiation * (255*0.08)));
+			p_HTArea.setAlpha((int)(gradiation * (255*0.12)));
 
 			c.drawRect((float)(width*0.15), 0, (float)(width - width*0.15), (float)height, p_HTArea);	// display touch area
 			c.drawLine((float) h_trigger_pos_px,0,(float) h_trigger_pos_px,(float) height,p_HTriggerLine);		// Draw horizontal trigger line

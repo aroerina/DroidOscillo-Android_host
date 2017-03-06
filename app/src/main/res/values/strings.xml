@@ -30,4 +30,6 @@
     <string name="td_minus">Time -</string>
     <string name="stop">STOP</string>
     <string name="en_up_trigger">Down trigger</string>
+    <string name="select_voltage_division">Select voltage division</string>
+    <string name="select_time_division">Select time division</string>
 </resources>
