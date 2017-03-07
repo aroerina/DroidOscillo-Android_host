@@ -8,7 +8,7 @@ DroidOscillo host application for Android
 Android 4.2 and higher
 
 ## Building tools
-Eclipse 4.3 and Android SDK version 4.4.2
+Android studio
 
 ## Install
 Please download .zip or clone and import into your workspace.
