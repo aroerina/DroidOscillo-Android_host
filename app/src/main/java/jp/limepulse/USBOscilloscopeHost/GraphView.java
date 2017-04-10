@@ -83,7 +83,7 @@ public class GraphView extends View {
 	private double gradiation = 1.0;
 	private double gradiation_flash = 1.0;
 	private double gradiation_touch_area = 1.0;
-	private double bias_indicator_move = 0;
+	private double bias_indicator_move   = 0;
 	private double vt_indicator_move = 0;
 	private Handler mHandler;
 
@@ -124,7 +124,7 @@ public class GraphView extends View {
 
 	@Override
 	public void onWindowFocusChanged (boolean hasWindowFocus){
-		Log.i("++ onWindowForcusChanged ++", TAG);
+		Log.i(TAG,"++ onWindowForcusChanged ++");
 		invalidate();
 	}
 

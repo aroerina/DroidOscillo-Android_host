@@ -121,18 +121,23 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     public static final int TIMESCALE_50NS = 1;
     public static final int TIMESCALE_25NS = 0;
 
+    public static final int ROLEVIEW_SWITCH_TIMESCALE = TIMESCALE_50MS;
+
     public static final double HIGHDIV_CALIBRATION_VOLTAGE = 10.0;
     public static final double LOWDIV_CALIBRATION_VOLTAGE = 0.717;
 
 
     public static final int NUM_VOLTSCALE = 10;
-    public static final int TGMODE_AUTO = 0;
-    public static final int TGMODE_NORMAL = 1;
-    public static final int TGMODE_FREE = 2;
-    public static final int TGMODE_SINGLE = 3;
-    public static final int TGMODE_SINGLE_FREE = 4;        // for Autoset mode
+    public static final int TGMODE_AUTO     = 0;
+    public static final int TGMODE_NORMAL   = 1;
+    public static final int TGMODE_FREE     = 2;
+    public static final int TGMODE_SINGLE   = 3;
+    public static final int TGMODE_AUTO_NORMAL = 4;
+    public static final int TGMODE_SINGLE_FREE = 5;        // for Autoset mode
+    public static final int TGMODE_DEVICE_STOP = 6;        // Stop
+    public static final int NUM_TRIGGER_MODE = 7;
 
-    public static final int TGMODE_DEVICE_STOP = 0;
+
     public static final int SAMPLE_MAX = 4095;
 
     public static final int READ_BUFFER_SIZE = 1600;
@@ -228,7 +233,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private static ListView voltageDivListL;
     private static ListView voltageDivListR;
 
-    static final String[] TRIGGER_MODE_LIST = new String[5];
+    static final String[] TRIGGER_MODE_LIST = new String[NUM_TRIGGER_MODE];
     static final String[] TIME_SCALE_LIST = new String[NUM_TIMESCALE];
     static final String[] VOLT_SCALE_LIST = new String[NUM_VOLTSCALE];
     static final String[] VOLT_SCALE_LIST_X10 = new String[NUM_VOLTSCALE];
@@ -251,8 +256,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private Timer SendTimer;
     private boolean isConnected = false;
     private boolean autoModeNormal = false;
-    private AutoModeTimerTask autoModeTask;
-    private UsbReceiveTask usbReceiveTask;
+    //private UsbReceiveTask usbReceiveTask;
 
     Handler mHandler;
     PendingIntent mPermissionIntent;
@@ -281,15 +285,17 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         TRIGGER_MODE_LIST[1] = "NORMAL";
         TRIGGER_MODE_LIST[2] = "FREE";
         TRIGGER_MODE_LIST[3] = "SINGLE";
+        TRIGGER_MODE_LIST[4] = "AUTO_N";
+        TRIGGER_MODE_LIST[5] = "SINGLE_F";
 
-        TIME_SCALE_LIST[0] = "25ns";
-        TIME_SCALE_LIST[1] = "50ns";
-        TIME_SCALE_LIST[2] = "100ns";
-        TIME_SCALE_LIST[3] = "250ns";
-        TIME_SCALE_LIST[4] = "500ns";    // 80Msps
-        TIME_SCALE_LIST[5] = "1μs";        // 80Msps
-        TIME_SCALE_LIST[6] = "2.5μs";    // 32Msps
-        TIME_SCALE_LIST[7] = "5μs";
+        TIME_SCALE_LIST[0] = "25ns";     // 80Msps 20point
+        TIME_SCALE_LIST[1] = "50ns";     // 80Msps 40point
+        TIME_SCALE_LIST[2] = "100ns";    // 80Msps 80point
+        TIME_SCALE_LIST[3] = "250ns";    // 80Msps 200point
+        TIME_SCALE_LIST[4] = "500ns";    // 80Msps 400point
+        TIME_SCALE_LIST[5] = "1μs";      // 80Msps 800point
+        TIME_SCALE_LIST[6] = "2.5μs";    // 32Msps 800point
+        TIME_SCALE_LIST[7] = "5μs";      // 16Msps 800point
         TIME_SCALE_LIST[8] = "10μs";
         TIME_SCALE_LIST[9] = "25μs";
         TIME_SCALE_LIST[10] = "50μs";
@@ -301,7 +307,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         TIME_SCALE_LIST[16] = "5ms";
         TIME_SCALE_LIST[17] = "10ms";
         TIME_SCALE_LIST[18] = "25ms";
-        TIME_SCALE_LIST[19] = "50ms";
+        TIME_SCALE_LIST[19] = "50ms";   // switch role view mode
         TIME_SCALE_LIST[20] = "100ms";
         TIME_SCALE_LIST[21] = "250ms";
         TIME_SCALE_LIST[22] = "500ms";
@@ -604,13 +610,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     SendTimer.cancel();
                 }
 
-                if(autoModeTask!=null) {
-                    autoModeTask.cancel();
-                }
 
-                if(usbReceiveTask != null) {
-                    usbReceiveTask.cancel();
-                }
+//                if(usbReceiveTask != null) {
+//                    usbReceiveTask.cancel();
+//                }
 
                 isConnected = false;
                 img_connect.setImageResource(R.drawable.disconnect);
@@ -785,9 +788,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         isConnected = true;
 
-        autoModeTask = new AutoModeTimerTask();
-        new Timer().scheduleAtFixedRate(autoModeTask, 0, 10L);    // Process per 10ms
-
         enableFlashText = true;
 
     }
@@ -913,183 +913,145 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     }
 
 
-    //
-    // Timer for auto mode not triggered
-    //
-    private volatile int autoTime = 0;
-
-    public class AutoModeTimerTask extends TimerTask {
-        public void run() {
-            if (autoModeNormal == false) {
-                return;
-            } else if (triggerMode != TGMODE_AUTO) {
-                autoTime = 0;
-                autoModeNormal = false;
-                return;
-            }
-
-
-            // If a trigger is not detected after a lapse of a certain time, the FREE mode is set
-            if (autoTime > 30) {    // 10ms * 30 = 300ms
-                sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);
-                endAutoModeNormal();
-            }
-
-            autoTime++;
-
-            //if(D)Log.d("AutoModeTimerTask", "autoTime is " + Integer.toString(autoTime));
-        }
-
-        public void timeReset() {
-            autoTime = 0;
-            //if(D)Log.d("AutoModeTimerTask", "autoTime reset");
-        }
-
-        public void endAutoModeNormal() {
-            autoTime = 0;
-            autoModeNormal = false;
-        }
-    }
-
-    private class UsbReceiveTask extends TimerTask {
-
-        private byte[] SendBuffer,ReceiveBuffer;
-        double[] g_wave;
-        int[] lawSamples;
-
-        UsbReceiveTask(){
-            // Acknowledge packet
-            SendBuffer = new byte[EpOutPacketSize];
-            SendBuffer[0] = MESSAGE_DATA_RECEIVED;
-
-            ReceiveBuffer = new byte[READ_BUFFER_SIZE];
-
-            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
-            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];    // law value samples
-        }
-
-        @Override
-        public void run() {
-
-            // error check
-            if(deviceConnection == null || endPointRead == null || isConnected==false){
-                // deviceConnection shutdown
-                EndConnection();
-                return;
-            }
-
-            //if (D) Log.e(TAG, "USB Data receive waiting");
-
-            int ret;
-            ret = deviceConnection.bulkTransfer(endPointRead,ReceiveBuffer,READ_BUFFER_SIZE,1);
-
-
-            if (ret > 0) {
-                // Send acknowledge
-                deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
-
-            } else {
-                //if (D) Log.e(TAG, "Usb data receive error occured");
-                //EndConnection();    // thread stop
-                return;
-            }
-
-
-            int j=0;
-            for (int i = 0; i < sampleLength; i++) {
-                lawSamples[i] = byte_to_halfword(ReceiveBuffer[j+1],ReceiveBuffer[j]);
-                j+=2;
-            }
-
-            // Convert to data with graph height set to 0~1
-            for (int i = 0; i < sampleLength; i++) {
-                g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
-            }
-
-            wave = new GraphWave(g_wave);        // wave analysis
-
-            mHandler.post(new Runnable() {
-                public void run() {
-                    if (calibration == true) {
-                        calibrate(lawSamples);
-                    }
-
-                    if (biasCalibState > 0) {
-                        biasCalib(lawSamples);
-                    }
-
-                    if (autoSetState > 0) {
-                        autoSet();
-                    }
-
-                    drawGraph();
-                }
-            });
-
-                //debug
-//    			Log.d(TAG,"DC = "+Integer.toString(getDC(lawSamples)));
-//    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
-
-        }
-
-        private void drawGraph() {
-
-            mGraph.setWave(wave.samples, sampleLength);    // draw graph
-
-            if (triggerMode == TGMODE_AUTO && run_status == true) {    // if Auto mode
-
-                // Trigger detection
-
-                boolean lower = !triggerSlopeUp;
-                boolean triggerDetect = false;
-                for (int i = 0; i < sampleLength; i++) {
-                    if (wave.samples[i] >= g_vpos) {    // Sample value exceeds trigger
-                        if (triggerSlopeUp && lower) {
-                            triggerDetect = true;
-                            break;
-                        }
-
-                        lower = false;
-                    } else {                            // Sample value is less than trigger
-                        if (!triggerSlopeUp && !lower) {
-                            triggerDetect = true;
-                            break;
-                        }
-
-                        lower = true;
-                    }
-                }
-
-                if (triggerDetect) {
-                    //
-                    // トリガーを検出した
-                    //
-
-                    if (autoModeNormal == false) {    // AUTO FREE
-                        autoModeNormal = true;
-                        sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);    // set NORMAL mode
-                    } else {                        // AUTO NORMAL
-                        autoModeTask.timeReset();    // Timer counter reset
-                    }
-                }
-            } else if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
-
-                // On the device side, since it will change freely internally, there is no need to send runninng mode change
-                runModeSetStop();
-
-                tbtn_stop.setChecked(true);
-                if (D) Log.d(TAG, "Stop botton set cheched");
-            }
-        }
-
-        public void EndConnection() {
-            deviceConnection = null;
-            endPointRead = null;
-            epw_Msg = null;
-            mGraph.endThread();
-            isConnected = false;
-        }
-    }
+//    private class UsbReceiveTask extends TimerTask {
+//
+//        private byte[] SendBuffer,ReceiveBuffer;
+//        double[] g_wave;
+//        int[] lawSamples;
+//
+//        UsbReceiveTask(){
+//            // Acknowledge packet
+//            SendBuffer = new byte[EpOutPacketSize];
+//            SendBuffer[0] = MESSAGE_DATA_RECEIVED;
+//
+//            ReceiveBuffer = new byte[READ_BUFFER_SIZE];
+//
+//            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
+//            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];    // law value samples
+//        }
+//
+//        @Override
+//        public void run() {
+//
+//            // error check
+//            if(deviceConnection == null || endPointRead == null || isConnected==false){
+//                // deviceConnection shutdown
+//                EndConnection();
+//                return;
+//            }
+//
+//            //if (D) Log.e(TAG, "USB Data receive waiting");
+//
+//            int ret;
+//            ret = deviceConnection.bulkTransfer(endPointRead,ReceiveBuffer,READ_BUFFER_SIZE,1);
+//
+//
+//            if (ret > 0) {
+//                // Send acknowledge
+//                deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
+//
+//            } else {
+//                //if (D) Log.e(TAG, "Usb data receive error occured");
+//                //EndConnection();    // thread stop
+//                return;
+//            }
+//
+//
+//            int j=0;
+//            for (int i = 0; i < sampleLength; i++) {
+//                lawSamples[i] = byte_to_halfword(ReceiveBuffer[j+1],ReceiveBuffer[j]);
+//                j+=2;
+//            }
+//
+//            // Convert to data with graph height set to 0~1
+//            for (int i = 0; i < sampleLength; i++) {
+//                g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
+//            }
+//
+//            wave = new GraphWave(g_wave);        // wave analysis
+//
+//            mHandler.post(new Runnable() {
+//                public void run() {
+//                    if (calibration == true) {
+//                        calibrate(lawSamples);
+//                    }
+//
+//                    if (biasCalibState > 0) {
+//                        biasCalib(lawSamples);
+//                    }
+//
+//                    if (autoSetState > 0) {
+//                        autoSet();
+//                    }
+//
+//                    drawGraph();
+//                }
+//            });
+//
+//                //debug
+////    			Log.d(TAG,"DC = "+Integer.toString(getDC(lawSamples)));
+////    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
+//
+//        }
+//
+//        private void drawGraph() {
+//
+//            mGraph.setWave(wave.samples, sampleLength);    // draw graph
+//
+//            if (triggerMode == TGMODE_AUTO && run_status == true) {    // if Auto mode
+//
+//                // Trigger detection
+//
+//                boolean lower = !triggerSlopeUp;
+//                boolean triggerDetect = false;
+//                for (int i = 0; i < sampleLength; i++) {
+//                    if (wave.samples[i] >= g_vpos) {    // Sample value exceeds trigger
+//                        if (triggerSlopeUp && lower) {
+//                            triggerDetect = true;
+//                            break;
+//                        }
+//
+//                        lower = false;
+//                    } else {                            // Sample value is less than trigger
+//                        if (!triggerSlopeUp && !lower) {
+//                            triggerDetect = true;
+//                            break;
+//                        }
+//
+//                        lower = true;
+//                    }
+//                }
+//
+//                if (triggerDetect) {
+//                    //
+//                    // トリガーを検出した
+//                    //
+//
+//                    if (autoModeNormal == false) {    // AUTO FREE
+//                        autoModeNormal = true;
+//                        sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);    // set NORMAL mode
+//                    } else {                        // AUTO NORMAL
+//                        autoModeTask.timeReset();    // Timer counter reset
+//                    }
+//                }
+//            } else if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
+//
+//                // On the device side, since it will change freely internally, there is no need to send runninng mode change
+//                runModeSetStop();
+//
+//                tbtn_stop.setChecked(true);
+//                if (D) Log.d(TAG, "Stop botton set cheched");
+//            }
+//        }
+//
+//        public void EndConnection() {
+//            deviceConnection = null;
+//            endPointRead = null;
+//            epw_Msg = null;
+//            mGraph.endThread();
+//            isConnected = false;
+//        }
+//    }
 
     private class UsbReceiveThread extends Thread {
 
@@ -1139,7 +1101,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     }
 
                     // Send acknowledge
-                    deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
+                    //deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
 
                 } else {
                     if (D) Log.e(TAG, "Request queueing error occured");
@@ -1151,7 +1113,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
 
                 for (int i = 0; i < sampleLength; i++) {
-                    lawSamples[i] = (int) ReceiveBuffer.getShort();
+                    lawSamples[i] = (int) ReceiveBuffer.getShort();     // 2byte to short
                 }
 
                 // Convert to data with graph height set to 0~1
@@ -1175,7 +1137,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                             autoSet();
                         }
 
-                        drawGraph();
+                        mGraph.setWave(wave.samples, sampleLength);    // draw graph
+
+                        if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
+
+                            // On the device side, since it will change freely internally, there is no need to send runninng mode change
+                            runModeSetStop();
+
+                            tbtn_stop.setChecked(true);
+                            if (D) Log.d(TAG, "Stop botton set cheched");
+                        }
                     }
                 });
 
@@ -1194,56 +1165,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             endPointRead = null;
             epw_Msg = null;
             mGraph.endThread();
-        }
-
-        private void drawGraph() {
-
-            mGraph.setWave(wave.samples, sampleLength);    // draw graph
-
-            if (triggerMode == TGMODE_AUTO && run_status == true) {    // if Auto mode
-
-                // Trigger detection
-
-                boolean lower = !triggerSlopeUp;
-                boolean triggerDetect = false;
-                for (int i = 0; i < sampleLength; i++) {
-                    if (wave.samples[i] >= g_vpos) {    // Sample value exceeds trigger
-                        if (triggerSlopeUp && lower) {
-                            triggerDetect = true;
-                            break;
-                        }
-
-                        lower = false;
-                    } else {                            // Sample value is less than trigger
-                        if (!triggerSlopeUp && !lower) {
-                            triggerDetect = true;
-                            break;
-                        }
-
-                        lower = true;
-                    }
-                }
-
-                if (triggerDetect) {
-                    //
-                    // トリガーを検出した
-                    //
-
-                    if (autoModeNormal == false) {    // AUTO FREE
-                        autoModeNormal = true;
-                        sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);    // set NORMAL mode
-                    } else {                        // AUTO NORMAL
-                        autoModeTask.timeReset();    // Timer counter reset
-                    }
-                }
-            } else if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
-
-                // On the device side, since it will change freely internally, there is no need to send runninng mode change
-                runModeSetStop();
-
-                tbtn_stop.setChecked(true);
-                if (D) Log.d(TAG, "Stop botton set cheched");
-            }
         }
 
         public void EndConnection() {
@@ -1348,7 +1269,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             vpp = max - min;
 
             //
-            //	Frequency
+            //	Frequency analysis
             //
 
             freq = 0;
@@ -1504,21 +1425,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     private void setTriggerMode() {
 
-        if (autoModeNormal && autoModeTask != null && triggerMode != TGMODE_AUTO) {    // End AutoModeTask
-            autoModeTask.endAutoModeNormal();
-        }
-
-        if (run_status == true) {        // Not send if STOP mode
-            if (triggerMode == TGMODE_AUTO || triggerMode == TGMODE_FREE) {
-                sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);
-            } else if (triggerMode == TGMODE_NORMAL) {
-                sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);
-            } else if (triggerMode == TGMODE_SINGLE) {
-                sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE);
-            } else if (triggerMode == TGMODE_SINGLE_FREE) {
-                sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);
-                return;
-            }
+        if(triggerMode == TGMODE_AUTO && timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
+            sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);         // AUTOMODEでサンプル速度が遅い時はFREE
+        } else {
+            sendMessage(MESSAGE_RUNMODE, triggerMode);
         }
 
         triggerModeText.setText(TRIGGER_MODE_LIST[triggerMode]);
@@ -1531,19 +1441,19 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private void setTimescale() {
 
         switch (timescale) {
-            case 0:
+            case TIMESCALE_25NS:
                 sampleLength = 20;
                 break;
-            case 1:
+            case TIMESCALE_50NS:
                 sampleLength = 40;
                 break;
-            case 2:
+            case TIMESCALE_100NS:
                 sampleLength = 80;
                 break;
-            case 3:
+            case TIMESCALE_250NS:
                 sampleLength = 200;
                 break;
-            case 4:
+            case TIMESCALE_500NS:
                 sampleLength = 400;
                 break;
             default:    // timescale >= 5
@@ -1557,6 +1467,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         sendMessage(MESSAGE_TIMESCALE, timescale);
         setHTrigger();                        // For re calculate oscilloscope trigger timer
         setBias(true);
+
+        // Role view mode setting
+        // ADC低速時 AUTOモードは内部的にFREEにする
+        if(triggerMode == TGMODE_AUTO) {
+            if (timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
+                sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);
+            } else {
+                sendMessage(MESSAGE_RUNMODE, TGMODE_AUTO);
+            }
+        }
 
         TimescaleText.setText("Td:" + String.format("%5s", TIME_SCALE_LIST[timescale]));
 
@@ -2081,7 +2001,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         if (autoSetState <= 2) {
             autoSetState++;    // Discard the first two received samples
-            sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mod初めて工作で使ったトランジスタe
+            sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
 
         } else if (autoSetState == 3 || autoSetState == 5) {    // Set the waveform in the center of the graph
             if (wave.vpp > 1) {    // If the waveform does not fit in the graph end
@@ -2579,10 +2499,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 if (run_status == true) {        // STOP -> RUN
                     setTriggerMode();
                 } else {                    // RUN -> STOP
-                    if (autoModeNormal && autoModeTask != null) {
-                        autoModeTask.endAutoModeNormal();
-                    }
-
                     sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);
                 }
                 break;
@@ -2736,9 +2652,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
                 // ready for autoset
                 triggerMode = TGMODE_SINGLE_FREE;
-                if (autoModeNormal && autoModeTask != null) {
-                    autoModeTask.endAutoModeNormal();
-                }
 
                 sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);    // stop
                 voltscale = 1;            // V/div = 2V
@@ -2752,7 +2665,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 setTimescale();
                 autoSetState = 1;
 
-                setTriggerMode();    //Free single shot mode
+                sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
                 break;
 
 
