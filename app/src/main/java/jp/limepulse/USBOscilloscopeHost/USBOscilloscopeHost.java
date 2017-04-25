@@ -57,7 +57,7 @@ import android.widget.Toast;
 public class USBOscilloscopeHost extends Activity implements OnClickListener, OnLongClickListener {
     // Debugging
     private boolean D = false;		// Release
-    //private boolean D = true;            // Debug Mode
+    //private boolean D = true;     // Debug Mode
 
     private static final String TAG = "USBOscilloscopeHost";
     private static final String ACTION_USB_PERMISSION = "com.google.android.HID.action.USB_PERMISSION";
@@ -266,7 +266,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     // Oscilloscope settings
     private int triggerMode, verTriggerValue;
-    private boolean run_status = true, dc_cut, triggerSlopeUp = true, x10Mode, expand;
+    private boolean isScopeRunning = true, dc_cut, triggerSlopeUp = true, x10Mode, expand;
     private boolean calibration = false;
     private int sampleLength;//,sampleSizeByte;
     private int timescale, voltscale, graph_fullscale, graph_min;
@@ -275,7 +275,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     //g_bias_pos,g_vpos : 0 is the bottom of the graph 0.5, the center 1 is the highest position
     //g_hpos : 0 is the center. -1 is the left edge of the graph. 1 is the right end of the graph
     private double g_bias_pos, g_vpos, g_hpos;
-    private GraphWave wave;
+    private WaveAnalizer waveMeta;
     //private boolean long_click_detected = false;
 
 
@@ -521,7 +521,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             while (deviceIterator.hasNext()) {
                 device = deviceIterator.next();
                 if (device.getProductId() == USB_DEVICE_PID && device.getVendorId() == USB_DEVICE_VID) {    // VID PID 確認
-                    setDevice(device);
+                    setDevice(device,false);    //ファームウェアを送信しない
                     break;
                 }
             }
@@ -552,18 +552,18 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 mHandler.post(new Runnable() {
                     public void run() {
                         FrameRateText.setText("FPS:" + Integer.toString(mGraph.frameRateGetAndReset()));
-                        if (wave == null) return;
+                        if (waveMeta == null) return;
 
-                        VppText.setText("Vpp:" + String.format("%7s", siConverter(wave.vpp * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio) + "V"));
-                        FreqText.setText("Frq:" + String.format("%5s", siConverter(wave.freq)) + "Hz");
-                        VrmsText.setText("Vrms:" + String.format("%5s", siConverter(wave.vrms * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
-                        MeanText.setText("Mean:" + String.format("%5s", siConverter(wave.mean * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
+                        VppText.setText("Vpp:" + String.format("%7s", siConverter(waveMeta.vpp * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio) + "V"));
+                        FreqText.setText("Frq:" + String.format("%5s", siConverter(waveMeta.freq)) + "Hz");
+                        VrmsText.setText("Vrms:" + String.format("%5s", siConverter(waveMeta.vrms * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
+                        MeanText.setText("Mean:" + String.format("%5s", siConverter(waveMeta.mean * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
 
-//						if(wave.range_status == GraphWave.RANGE_IN){
+//						if(waveMeta.range_status == WaveAnalizer.RANGE_IN){
 //							img_range.setImageResource(R.drawable.over_range_in);
-//						} else if(wave.range_status == GraphWave.RANGE_UP_OVER){
+//						} else if(waveMeta.range_status == WaveAnalizer.RANGE_UP_OVER){
 //							img_range.setImageResource(R.drawable.over_range_up);
-//						} else if(wave.range_status == GraphWave.RANGE_DOWN_OVER){
+//						} else if(waveMeta.range_status == WaveAnalizer.RANGE_DOWN_OVER){
 //							img_range.setImageResource(R.drawable.over_range_down);
 //						} else {
 //							img_range.setImageResource(R.drawable.over_range_bi);
@@ -597,7 +597,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     return;
                 }
 
-                setDevice(device);
+                setDevice(device,true);
             }
 
             if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {        // If the device is disconnected while it is running
@@ -632,7 +632,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                         if (device != null) {
                             //call method to set up device communication
-                            setDevice(device);
+                            setDevice(device,true);
                         }
                     } else {
                         if (D) Log.d(TAG, "permission denied for device " + device);
@@ -656,7 +656,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         return (((int) upper) << 8) | ((int) lower & 0xff);
     }
 
-    public void setDevice(UsbDevice device) {
+    public void setDevice(UsbDevice device,boolean sendFirmware) {
 
         if (D) Log.d(TAG, "SET DEVICE");
 
@@ -715,14 +715,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         // Change connection icon green
         img_connect.setImageResource(R.drawable.connected);
 
-        // Firmware transmit
-        Resources res = getResources();
-        if (D) Log.d(TAG, "Send firmware");
-        if (D) Log.d(TAG, "M4 firmware transfer start.");
-        sendFirmware(M4_FIRM_WRITEADDR, res.openRawResource(R.raw.m4), M4_FIRM_ENTRYADDR);
+        if(sendFirmware) {
+            // Firmware transmit
+            Resources res = getResources();
+            if (D) Log.d(TAG, "Send firmware");
+            if (D) Log.d(TAG, "M4 firmware transfer start.");
+            sendFirmware(M4_FIRM_WRITEADDR, res.openRawResource(R.raw.m4), M4_FIRM_ENTRYADDR);
 
-        if (D) Log.d(TAG, "M0APP firmware transfer start.");
-        sendFirmware(M0APP_FIRM_WRITEADDR, res.openRawResource(R.raw.m0app), M0APP_FIRM_ENTRYADDR);
+            if (D) Log.d(TAG, "M0APP firmware transfer start.");
+            sendFirmware(M0APP_FIRM_WRITEADDR, res.openRawResource(R.raw.m0app), M0APP_FIRM_ENTRYADDR);
+        }
 
         byte[] ReadBuffer = new byte[endPointRead.getMaxPacketSize()];
 
@@ -768,6 +770,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         setupVerticalAxis();
         setupBias();
 
+        isConnected = true;
+
+        ReceiveThread = new UsbReceiveThread();
+        ReceiveThread.start();
+
         //
         // Oscilloscope configuration value set
         //
@@ -778,27 +785,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         } else {
             sendMessage(MESSAGE_DCCUT, 0);
         }
-
-        ReceiveThread = new UsbReceiveThread();
-        ReceiveThread.start();
-
-//        usbReceiveTask = new UsbReceiveTask();
-//        new Timer().scheduleAtFixedRate(usbReceiveTask, 0,6L);
-
-
-        isConnected = true;
-
-        enableFlashText = true;
-
     }
 
     // Oscilloscope configuration
     private void setParameters() {
         setTimescale();        // also call setHTrigger()
         setVoltscale(true);    // also call setBias()
-        setTriggerMode();
         setTriggerSlope();
         setVTrigger(true);
+        //setTriggerMode();
     }
 
 
@@ -913,164 +908,27 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     }
 
 
-//    private class UsbReceiveTask extends TimerTask {
-//
-//        private byte[] SendBuffer,ReceiveBuffer;
-//        double[] g_wave;
-//        int[] lawSamples;
-//
-//        UsbReceiveTask(){
-//            // Acknowledge packet
-//            SendBuffer = new byte[EpOutPacketSize];
-//            SendBuffer[0] = MESSAGE_DATA_RECEIVED;
-//
-//            ReceiveBuffer = new byte[READ_BUFFER_SIZE];
-//
-//            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
-//            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];    // law value samples
-//        }
-//
-//        @Override
-//        public void run() {
-//
-//            // error check
-//            if(deviceConnection == null || endPointRead == null || isConnected==false){
-//                // deviceConnection shutdown
-//                EndConnection();
-//                return;
-//            }
-//
-//            //if (D) Log.e(TAG, "USB Data receive waiting");
-//
-//            int ret;
-//            ret = deviceConnection.bulkTransfer(endPointRead,ReceiveBuffer,READ_BUFFER_SIZE,1);
-//
-//
-//            if (ret > 0) {
-//                // Send acknowledge
-//                deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
-//
-//            } else {
-//                //if (D) Log.e(TAG, "Usb data receive error occured");
-//                //EndConnection();    // thread stop
-//                return;
-//            }
-//
-//
-//            int j=0;
-//            for (int i = 0; i < sampleLength; i++) {
-//                lawSamples[i] = byte_to_halfword(ReceiveBuffer[j+1],ReceiveBuffer[j]);
-//                j+=2;
-//            }
-//
-//            // Convert to data with graph height set to 0~1
-//            for (int i = 0; i < sampleLength; i++) {
-//                g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
-//            }
-//
-//            wave = new GraphWave(g_wave);        // wave analysis
-//
-//            mHandler.post(new Runnable() {
-//                public void run() {
-//                    if (calibration == true) {
-//                        calibrate(lawSamples);
-//                    }
-//
-//                    if (biasCalibState > 0) {
-//                        biasCalib(lawSamples);
-//                    }
-//
-//                    if (autoSetState > 0) {
-//                        autoSet();
-//                    }
-//
-//                    drawGraph();
-//                }
-//            });
-//
-//                //debug
-////    			Log.d(TAG,"DC = "+Integer.toString(getDC(lawSamples)));
-////    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
-//
-//        }
-//
-//        private void drawGraph() {
-//
-//            mGraph.setWave(wave.samples, sampleLength);    // draw graph
-//
-//            if (triggerMode == TGMODE_AUTO && run_status == true) {    // if Auto mode
-//
-//                // Trigger detection
-//
-//                boolean lower = !triggerSlopeUp;
-//                boolean triggerDetect = false;
-//                for (int i = 0; i < sampleLength; i++) {
-//                    if (wave.samples[i] >= g_vpos) {    // Sample value exceeds trigger
-//                        if (triggerSlopeUp && lower) {
-//                            triggerDetect = true;
-//                            break;
-//                        }
-//
-//                        lower = false;
-//                    } else {                            // Sample value is less than trigger
-//                        if (!triggerSlopeUp && !lower) {
-//                            triggerDetect = true;
-//                            break;
-//                        }
-//
-//                        lower = true;
-//                    }
-//                }
-//
-//                if (triggerDetect) {
-//                    //
-//                    // トリガーを検出した
-//                    //
-//
-//                    if (autoModeNormal == false) {    // AUTO FREE
-//                        autoModeNormal = true;
-//                        sendMessage(MESSAGE_RUNMODE, TGMODE_NORMAL);    // set NORMAL mode
-//                    } else {                        // AUTO NORMAL
-//                        autoModeTask.timeReset();    // Timer counter reset
-//                    }
-//                }
-//            } else if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
-//
-//                // On the device side, since it will change freely internally, there is no need to send runninng mode change
-//                runModeSetStop();
-//
-//                tbtn_stop.setChecked(true);
-//                if (D) Log.d(TAG, "Stop botton set cheched");
-//            }
-//        }
-//
-//        public void EndConnection() {
-//            deviceConnection = null;
-//            endPointRead = null;
-//            epw_Msg = null;
-//            mGraph.endThread();
-//            isConnected = false;
-//        }
-//    }
+    private ByteBuffer copyBuffer;
+    volatile boolean isReceived;
 
     private class UsbReceiveThread extends Thread {
 
         private ByteBuffer ReceiveBuffer;
-        private byte[] SendBuffer;
-        double[] g_wave;
-        int[] lawSamples;
-        UsbRequest inRequest;
+        private GraphDrawThread graphDrawThread;
+        private UsbRequest inRequest;
+
+        UsbReceiveThread(){
+            ReceiveBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
+            ReceiveBuffer.order(ByteOrder.nativeOrder());    // set endian
+            copyBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
+            copyBuffer.order(ByteOrder.nativeOrder());
+            inRequest = new UsbRequest();
+            graphDrawThread = new GraphDrawThread();
+            isReceived = false;
+        }
 
         @Override
         public void run() {
-            // Acknowledge packet
-            SendBuffer = new byte[EpOutPacketSize];
-            SendBuffer[0] = MESSAGE_DATA_RECEIVED;
-
-            ReceiveBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
-            ReceiveBuffer.order(ByteOrder.LITTLE_ENDIAN);    // set endian
-
-            inRequest = new UsbRequest();
 
             if (inRequest.initialize(deviceConnection, endPointRead) == true) {
                 if (D) Log.i(TAG, "inRequest initialize suceeded.");
@@ -1079,9 +937,29 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 EndConnection();
             }
 
-            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
-            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];    // law value samples
+            graphDrawThread.start();
 
+
+            // 接続時サンプル送信を遅延させる SHL22用
+//            mHandler.postDelayed(new Runnable() {
+//                @Override
+//                public void run() {
+//                    if(isScopeRunning) {
+//                        setTriggerMode();
+//                    }
+//                    enableFlashText = true;
+//                }
+//            }, 3000L);
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if(isScopeRunning) {
+                        setTriggerMode();
+                    }
+                    enableFlashText = true;
+                }
+            });
 
             //
             //		main loop
@@ -1100,9 +978,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                         break;
                     }
 
-                    // Send acknowledge
-                    //deviceConnection.bulkTransfer(epw_Msg, SendBuffer, SendBuffer.length, 100);
-
                 } else {
                     if (D) Log.e(TAG, "Request queueing error occured");
                     EndConnection();    // thread stop
@@ -1112,48 +987,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 ReceiveBuffer.clear();
 
 
-                for (int i = 0; i < sampleLength; i++) {
-                    lawSamples[i] = (int) ReceiveBuffer.getShort();     // 2byte to short
+                synchronized (copyBuffer) {
+                    copyBuffer.clear();
+                    copyBuffer.put(ReceiveBuffer);
                 }
-
-                // Convert to data with graph height set to 0~1
-                for (int i = 0; i < sampleLength; i++) {
-                    g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
-                }
-
-                wave = new GraphWave(g_wave);        // wave analysis
-
-                mHandler.post(new Runnable() {
-                    public void run() {
-                        if (calibration == true) {
-                            calibrate(lawSamples);
-                        }
-
-                        if (biasCalibState > 0) {
-                            biasCalib(lawSamples);
-                        }
-
-                        if (autoSetState > 0) {
-                            autoSet();
-                        }
-
-                        mGraph.setWave(wave.samples, sampleLength);    // draw graph
-
-                        if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
-
-                            // On the device side, since it will change freely internally, there is no need to send runninng mode change
-                            runModeSetStop();
-
-                            tbtn_stop.setChecked(true);
-                            if (D) Log.d(TAG, "Stop botton set cheched");
-                        }
-                    }
-                });
-
-                //debug
-//    			Log.d(TAG,"DC = "+Integer.toString(getDC(lawSamples)));
-//    			Log.d(TAG,"graph_fullscale = "+Integer.toString(graph_fullscale));
-
+                isReceived = true;
             }
 
             inRequest.cancel();
@@ -1165,6 +1003,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             endPointRead = null;
             epw_Msg = null;
             mGraph.endThread();
+            graphDrawThread.endThread();
         }
 
         public void EndConnection() {
@@ -1173,8 +1012,93 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
     }
 
-    private class GraphWave {
-        double samples[];            // Sample with 1 as the graph height
+    private class GraphDrawThread extends Thread {
+        int[] lawSamples;
+        double[] g_wave;
+        private ByteBuffer buffer;
+        private boolean running;
+
+        GraphDrawThread() {
+            g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
+            lawSamples = new int[DEFAULT_SAMPLE_LENGTH];        // law value samples
+
+            buffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            waveMeta = new WaveAnalizer();        // waveMeta analysis
+        }
+
+        @Override
+        public void run() {
+            running = true;
+
+            while(running) {
+                if(isReceived) {
+
+                    isReceived = false;
+                    buffer.clear();
+                    synchronized (copyBuffer) {
+                        copyBuffer.clear();
+                        buffer.put(copyBuffer);
+                    }
+
+                    buffer.clear();
+                    for (int i = 0; i < sampleLength; i++) {
+                        lawSamples[i] = (int) buffer.getShort();     // 2byte to short
+                    }
+
+                    synchronized(g_wave) {
+                        // Convert to data with graph height set to 0~1
+                        for (int i = 0; i < sampleLength; i++) {
+                            g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
+                        }
+                    }
+
+                    waveMeta.analysisWave(g_wave);        // waveMeta analysis
+
+                    mHandler.post(new Runnable() {
+                        public void run() {
+                            if (calibration == true) {
+                                calibrate(lawSamples);
+                            }
+
+                            if (biasCalibState > 0) {
+                                biasCalib(lawSamples);
+                            }
+
+                            if (autoSetState > 0) {
+                                autoSet();
+                            }
+
+                            synchronized(g_wave) {
+                                mGraph.setWave(g_wave, sampleLength);    // draw graph
+                            }
+
+                            if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
+
+                                // On the device side, since it will change freely internally, there is no need to send runninng mode change
+                                runModeSetStop();
+
+                                tbtn_stop.setChecked(true);
+                                if (D) Log.d(TAG, "Stop botton set cheched");
+                            }
+                        }
+                    });
+                }
+
+                try{
+                    sleep(1L);
+                }catch (InterruptedException e){
+                }
+            }
+        }
+
+        public void endThread(){
+            running = false;
+        }
+
+    }
+
+    private class WaveAnalizer {
         double max = 0, min = 0, vpp = 0;
         double freq = 0;
         double vrms = 0, mean = 0;
@@ -1182,16 +1106,17 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         public int range_status = 0;            // 0= range in ,1=up over,2=down over,3=bi side over
         final static int RANGE_IN = 0, RANGE_UP_OVER = 1, RANGE_DOWN_OVER = 2, RANGE_BISIDE_OVER = 3;
 
-        GraphWave(double gwave[]) {
-            samples = gwave;
-            if (samples == null) return;
+        void analysisWave(double gwave[]) {
+            if (gwave == null) return;
 
             //
             //	Range over detect
             //
 
+            range_status = RANGE_IN;
+
             for (int i = 0; i < sampleLength; i++) {
-                if (samples[i] > 1) {    // up over
+                if (gwave[i] > 1) {    // up over
 
                     if (range_status == RANGE_DOWN_OVER) {
                         range_status = RANGE_BISIDE_OVER;
@@ -1201,7 +1126,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     }
 
 
-                } else if (samples[i] < 0) {    // down over
+                } else if (gwave[i] < 0) {    // down over
 
                     if (range_status == RANGE_UP_OVER) {
                         range_status = RANGE_BISIDE_OVER;
@@ -1233,7 +1158,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             double aqum = 0;
             for (int i = 0; i < sampleLength; i++) {
-                aqum += samples[i] - g_bias_pos;
+                aqum += gwave[i] - g_bias_pos;
             }
 
             mean = aqum / (double) sampleLength;
@@ -1248,7 +1173,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             aqum = 0;
             for (int i = 0; i < sampleLength; i++) {
-                aqum += Math.pow((samples[i] - g_bias_pos), 2.0);        // Adding power
+                aqum += Math.pow((gwave[i] - g_bias_pos), 2.0);        // Adding power
             }
 
             vrms = aqum / (double) sampleLength;
@@ -1259,12 +1184,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             //	peak-to-peak voltage
             //
 
-            max = samples[0];
-            min = samples[0];
+            max = gwave[0];
+            min = gwave[0];
 
             for (int i = 1; i < sampleLength; i++) {
-                if (samples[i] > max) max = samples[i];
-                if (samples[i] < min) min = samples[i];
+                if (gwave[i] > max) max = gwave[i];
+                if (gwave[i] < min) min = gwave[i];
             }
             vpp = max - min;
 
@@ -1274,7 +1199,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             freq = 0;
 
-            if (vpp < (1 / 16)) {    // If the amplitude is less than 1/2 div, do not measure
+            if (vpp < (1.0 / 16.0)) {    // If the amplitude is less than 1/2 div, do not measure
                 return;
             }
 
@@ -1297,9 +1222,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             int state_before = 0;
             final int STATE_HIGH = 1;
             final int STATE_LOW = 2;
+            num_waves = 0;
 
             for (int i = 0; i < sampleLength; i++) {
-                if (high_threth < samples[i]) {                                // high
+                if (high_threth < gwave[i]) {                                // high
                     if (state_before == STATE_LOW) {
                         if (last_overed_i != 0) {
                             aqum_time += i - last_overed_i;
@@ -1310,7 +1236,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     }
 
                     state_before = STATE_HIGH;
-                } else if (low_threth > samples[i]) {                        // low
+                } else if (low_threth > gwave[i]) {                        // low
 //        			if(state_before == STATE_HIGH){
 //        				aqum_time += i - last_overed_i;
 //        				num_crossed++;
@@ -1400,32 +1326,41 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
 
     public void RunStopToggle() {
-        run_status = !run_status;
+        isScopeRunning = !isScopeRunning;
 
-        if (run_status) {
+        if (isScopeRunning) {
             RunStopText.setText("RUN");
             RunStopText.setTextColor(Color.GREEN);
+
+            if(!tbtn_stop.isChecked()){  //ボタンの表示状態を合わせる
+                tbtn_stop.setChecked(false);
+            }
         } else {
             RunStopText.setText("STOP");
             RunStopText.setTextColor(Color.RED);
         }
+            if(tbtn_stop.isChecked()){ //ボタンの表示状態を合わせる
+                tbtn_stop.setChecked(true);
+            }
     }
 
     public void runModeSetStop() {
-        run_status = false;
+        isScopeRunning = false;
         RunStopText.setText("STOP");
         RunStopText.setTextColor(Color.RED);
     }
 
     public void runModeSetRun() {
-        run_status = true;
+        isScopeRunning = true;
         RunStopText.setText("RUN");
         RunStopText.setTextColor(Color.GREEN);
     }
 
     private void setTriggerMode() {
 
-        if(triggerMode == TGMODE_AUTO && timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
+        if(isScopeRunning == false){
+            sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);
+        } else  if(triggerMode == TGMODE_AUTO && timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
             sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);         // AUTOMODEでサンプル速度が遅い時はFREE
         } else {
             sendMessage(MESSAGE_RUNMODE, triggerMode);
@@ -1676,7 +1611,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             timescale = TIMESCALE_2P5MS;        // 2.5ms
             setTimescale();
 
-            if (run_status == false) {
+            if (isScopeRunning == false) {
                 RunStopToggle();
             }
 
@@ -1974,6 +1909,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     //
     // Auto Range
     //
+    // まずV/div=5V、T/div=10ms にセット　バイアスを中心にセット
     // 1.サンプル値最大値最小値チェック
     // 2.サンプル値上下両方が飽和 → 終了
     //   サンプル値上側が飽和 → グラフの下端に波形の最低値を合わせるようにバイアスを合わせる2へ
@@ -1995,6 +1931,25 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     int autoSetState = 0;
 
+    private void readyForAutoSet() {
+        // ready for autoset
+        triggerMode = TGMODE_SINGLE_FREE;
+
+        sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);    // stop
+        voltscale = VOLTSCALE_5V;                                      // V/div = 5V
+        setVoltscale(true);
+        g_bias_pos = 0.5;
+        setBias(true);
+
+        timescale = TIMESCALE_10MS;                                     // 10ms
+
+        isScopeRunning = true;
+        setTimescale();
+        autoSetState = 1;
+
+        sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
+    }
+
     public void autoSet() {
 
         Log.d(TAG, "Autoset state = " + Integer.toString(autoSetState));
@@ -2004,18 +1959,18 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
 
         } else if (autoSetState == 3 || autoSetState == 5) {    // Set the waveform in the center of the graph
-            if (wave.vpp > 1) {    // If the waveform does not fit in the graph end
+            if (waveMeta.vpp > 1) {    // If the waveform does not fit in the graph end
                 autoSetState = 0;
                 return;
-            } else if (wave.min < 0 && wave.max < 1) { // Bottom saturate
+            } else if (waveMeta.min < 0 && waveMeta.max < 1) { // Bottom saturate
                 // A bias value such that the maximum value of the waveform is at the top of the graph
-                g_bias_pos = g_bias_pos + 1.0 - wave.max;
-            } else if (wave.min > 0 && wave.max > 1) { // Top sasturate
+                g_bias_pos = g_bias_pos + 1.0 - waveMeta.max;
+            } else if (waveMeta.min > 0 && waveMeta.max > 1) { // Top sasturate
                 // A bias value such that the minimum value of the waveform is at the bottom of the graph
-                g_bias_pos = g_bias_pos - wave.min;
+                g_bias_pos = g_bias_pos - waveMeta.min;
             } else {        // not saturate
                 // Set the waveform at the center of the graph
-                g_bias_pos = g_bias_pos - ((wave.min + (wave.vpp / 2)) - 0.5);
+                g_bias_pos = g_bias_pos - ((waveMeta.min + (waveMeta.vpp / 2)) - 0.5);
                 //g_bias_pos = g_bias_pos - (g_bias_pos % 0.125);	// Fit the divition
                 autoSetState++;
             }
@@ -2033,14 +1988,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         } else if (autoSetState == 4) {        // Range gradually decreases from 5V/div
 
             // Adjust bias if either is saturated
-            if (wave.min < 0 || wave.max > 1) {
+            if (waveMeta.min < 0 || waveMeta.max > 1) {
                 autoSetState = 3;
                 autoSet();
                 return;
             }
 
             // Select the maximum voltage range that will be greater than 2.5V/div
-            if (wave.vpp < (2.5 / 8.0)) {
+            if (waveMeta.vpp < (2.5 / 8.0)) {
                 voltscale++;
                 if (voltscale >= (NUM_VOLTSCALE - 1)) {
                     autoSetState = 0;
@@ -2053,7 +2008,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
 
         } else if (autoSetState == 6) {    // Horizontal range select
-            if (wave.num_waves < 2) {
+            if (waveMeta.num_waves < 2) {
 
                 timescale++;
                 setTimescale();
@@ -2061,7 +2016,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 if (timescale > 20) {
                     autoSetState = 0;
                 }
-            } else if (wave.num_waves < 5) {
+            } else if (waveMeta.num_waves < 5) {
                 autoSetState = 0;
             } else {
 
@@ -2496,7 +2451,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             case R.id.tbtn_stop:
                 RunStopToggle();
 
-                if (run_status == true) {        // STOP -> RUN
+                if (isScopeRunning) {        // STOP -> RUN
                     setTriggerMode();
                 } else {                    // RUN -> STOP
                     sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);
@@ -2650,22 +2605,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     return;
                 }
 
-                // ready for autoset
-                triggerMode = TGMODE_SINGLE_FREE;
-
-                sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);    // stop
-                voltscale = 1;            // V/div = 2V
-                setVoltscale(true);
-                g_bias_pos = 0.5;
-                setBias(true);
-
-                timescale = 17;    // 10ms
-
-                run_status = true;
-                setTimescale();
-                autoSetState = 1;
-
-                sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
+                readyForAutoSet();
                 break;
 
 
@@ -2816,7 +2756,22 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     @Override
     public void onStop() {
         super.onStop();
+        if(isScopeRunning) {
+            sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);   // -> STOP
+        }
         if (D) Log.i(TAG, "-- ON STOP --");
+    }
+
+
+    @Override
+    public synchronized void onRestart() {
+        super.onRestart();
+
+        if(isScopeRunning) {       // STOPから復帰
+            setTriggerMode();
+        }
+
+        if (D) Log.i(TAG, "- ON Restart -");
     }
 
     @Override
