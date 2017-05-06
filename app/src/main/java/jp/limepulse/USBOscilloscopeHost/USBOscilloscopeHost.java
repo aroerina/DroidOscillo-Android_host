@@ -56,16 +56,18 @@ import android.widget.Toast;
 
 public class USBOscilloscopeHost extends Activity implements OnClickListener, OnLongClickListener {
     // Debugging
-    private boolean D = false;		// Release
-    //private boolean D = true;     // Debug Mode
+    //private boolean D = false;		// Release
+    private boolean D = true;     // Debug Mode
 
     private static final String TAG = "USBOscilloscopeHost";
     private static final String ACTION_USB_PERMISSION = "com.google.android.HID.action.USB_PERMISSION";
 
-    // decimal
+    // in decimal
     private static final int USB_DEVICE_VID = 8137;        // NXP Vendor ID 0x1FC9
     private static final int USB_DEVICE_PID = 33128;    // DroidOscillo's PID 0x8168
 
+    private static final int EP_OUT_PACKET_SIZE = 16;
+    private static final int EP_IN_PACKET_SIZE = 512;
     //
     // USB Oscilloscope Configuration Message
     //
@@ -83,6 +85,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     public static final int MESSAGE_DEVICE_INIT = 255;
     public static final int MESSAGE_EEPROM_PAGE_WRITE = 12;
     public static final int MESSAGE_EEPROM_PAGE_READ = 13;
+    public static final int MESSAGE_IS_CONFIGURED = 14;     // ファームウェア書き込み済みかどうか調べる
 
 
     public static final int VOLTSCALE_5V = 0;
@@ -610,11 +613,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                     SendTimer.cancel();
                 }
 
-
-//                if(usbReceiveTask != null) {
-//                    usbReceiveTask.cancel();
-//                }
-
                 isConnected = false;
                 img_connect.setImageResource(R.drawable.disconnect);
                 calibration = false;
@@ -715,7 +713,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         // Change connection icon green
         img_connect.setImageResource(R.drawable.connected);
 
-        if(sendFirmware) {
+        byte[] ReadBuffer = new byte[EP_IN_PACKET_SIZE];
+        sendMessage(MESSAGE_IS_CONFIGURED, 1);        //ファームウェアが書き込まれていないか調べる
+        int result = deviceConnection.bulkTransfer(endPointRead, ReadBuffer, 1, 200);
+
+        if (D) Log.w(TAG, "result "+ Integer.toString(result));
+        if(result == -1) {
             // Firmware transmit
             Resources res = getResources();
             if (D) Log.d(TAG, "Send firmware");
@@ -725,8 +728,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             if (D) Log.d(TAG, "M0APP firmware transfer start.");
             sendFirmware(M0APP_FIRM_WRITEADDR, res.openRawResource(R.raw.m0app), M0APP_FIRM_ENTRYADDR);
         }
-
-        byte[] ReadBuffer = new byte[endPointRead.getMaxPacketSize()];
 
         // I2C EEPROM READ
         sendMessage(MESSAGE_EEPROM_PAGE_READ, 16);        //EEPROM sequential read request
@@ -829,6 +830,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 ret = deviceConnection.bulkTransfer(epw_Firm, buff, epw_FirmPacketSize, 100);
                 if (ret < 0) {
                     Log.e(TAG, "Firmware transfer failed!");
+                    return;
                 }
                 IsFinished = bin.read(buff, 0, epw_FirmPacketSize);
             }
@@ -913,16 +915,28 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     private class UsbReceiveThread extends Thread {
 
-        private ByteBuffer ReceiveBuffer;
+        // 同じエンドポイントに割り当てるリクエスト(バッファ)を増やしてパケット受信ロスする可能性を低くする。
+        // 増やすとメモリを食う
+        // 主にSH22用
+        private  final int NUM_RECEIVE_BUFFERS = 5;
+
+
         private GraphDrawThread graphDrawThread;
-        private UsbRequest inRequest;
+        private ByteBuffer [] ReceiveBuffers;
+        private UsbRequest [] inRequests;
 
         UsbReceiveThread(){
-            ReceiveBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
-            ReceiveBuffer.order(ByteOrder.nativeOrder());    // set endian
+            ReceiveBuffers = new ByteBuffer[NUM_RECEIVE_BUFFERS];
+            inRequests = new UsbRequest[NUM_RECEIVE_BUFFERS];
+
+            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
+                ReceiveBuffers[i] = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
+                ReceiveBuffers[i].order(ByteOrder.nativeOrder());    // set endian to native
+                inRequests[i] = new UsbRequest();
+            }
+
             copyBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
             copyBuffer.order(ByteOrder.nativeOrder());
-            inRequest = new UsbRequest();
             graphDrawThread = new GraphDrawThread();
             isReceived = false;
         }
@@ -930,26 +944,16 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         @Override
         public void run() {
 
-            if (inRequest.initialize(deviceConnection, endPointRead) == true) {
-                if (D) Log.i(TAG, "inRequest initialize suceeded.");
-            } else {
-                if (D) Log.e(TAG, "inRequest initialize failed.");
-                EndConnection();
+            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++) {
+                if (inRequests[i].initialize(deviceConnection, endPointRead) == true) {
+                    if (D) Log.i(TAG, "inRequest initialize suceeded.");
+                } else {
+                    if (D) Log.e(TAG, "inRequest initialize failed.");
+                    EndConnection();
+                }
             }
 
             graphDrawThread.start();
-
-
-            // 接続時サンプル送信を遅延させる SHL22用
-//            mHandler.postDelayed(new Runnable() {
-//                @Override
-//                public void run() {
-//                    if(isScopeRunning) {
-//                        setTriggerMode();
-//                    }
-//                    enableFlashText = true;
-//                }
-//            }, 3000L);
 
             mHandler.post(new Runnable() {
                 @Override
@@ -961,47 +965,74 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 }
             });
 
+
+            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
+                if (inRequests[i].queue(ReceiveBuffers[i], READ_BUFFER_SIZE) == false){
+                    if (D) Log.e(TAG, "Request queueing error occured");
+                    EndConnection();    // thread stop
+                    break;
+                }
+            }
+
+            UsbRequest retRequest;
+            int retRequestNumber = 0;
+            ByteBuffer retBuffer;
+
             //
             //		main loop
             //
             while (deviceConnection != null && endPointRead != null && isConnected) {
 
-                if (inRequest.queue(ReceiveBuffer, READ_BUFFER_SIZE) == true) {
 
-                    if(D) Log.i(TAG, "Request waiting...");
-                    // wait data receive
-                    if (deviceConnection.requestWait() == inRequest) {    //Request received
-                        if(D) Log.i(TAG, "Request received.");
-                    } else {
-                        if (D) Log.e(TAG, "In Request waiting error occured");
-                        EndConnection();    // thread stop
-                        break;
+                retRequest = deviceConnection.requestWait();
+
+                if (retRequest != null) {    //Request received
+                    if(D) Log.i(TAG, "Request received.");
+
+                    for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
+                        if(retRequest == inRequests[i]){
+                            retRequestNumber = i;
+                            break;
+                        }
                     }
 
+                    retBuffer = ReceiveBuffers[retRequestNumber];
+                    retBuffer.clear();
                 } else {
+                    if (D) Log.e(TAG, "In Request waiting error occured");
+                    EndConnection();    // thread stop
+                    break;
+                }
+
+                synchronized (copyBuffer) {
+                    copyBuffer.clear();
+                    copyBuffer.put(retBuffer);
+                }
+                isReceived = true;
+
+                if(inRequests[retRequestNumber].queue(retBuffer, READ_BUFFER_SIZE) == false){
                     if (D) Log.e(TAG, "Request queueing error occured");
                     EndConnection();    // thread stop
                     break;
                 }
 
-                ReceiveBuffer.clear();
-
-
-                synchronized (copyBuffer) {
-                    copyBuffer.clear();
-                    copyBuffer.put(ReceiveBuffer);
+                synchronized (graphDrawThread) {
+                    graphDrawThread.notify();
                 }
-                isReceived = true;
+
             }
 
-            inRequest.cancel();
-            inRequest.close();
-            inRequest = null;
+            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
+                inRequests[i].cancel();
+                inRequests[i].close();
+                inRequests[i] = null;
+            }
 
             // deviceConnection shutdown
             deviceConnection = null;
             endPointRead = null;
             epw_Msg = null;
+            EpOutPacketSize = 0;
             mGraph.endThread();
             graphDrawThread.endThread();
         }
@@ -1016,7 +1047,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         int[] lawSamples;
         double[] g_wave;
         private ByteBuffer buffer;
-        private boolean running;
+        private volatile boolean running;
 
         GraphDrawThread() {
             g_wave = new double[DEFAULT_SAMPLE_LENGTH];        // normalizing samples (0~1)
@@ -1025,13 +1056,20 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             buffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             waveMeta = new WaveAnalizer();        // waveMeta analysis
+            running = true;
         }
+
+
 
         @Override
         public void run() {
-            running = true;
 
             while(running) {
+
+                try{
+                    wait();
+                }catch(Exception e){}
+
                 if(isReceived) {
 
                     isReceived = false;
@@ -1055,42 +1093,40 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
                     waveMeta.analysisWave(g_wave);        // waveMeta analysis
 
-                    mHandler.post(new Runnable() {
-                        public void run() {
-                            if (calibration == true) {
-                                calibrate(lawSamples);
-                            }
-
-                            if (biasCalibState > 0) {
-                                biasCalib(lawSamples);
-                            }
-
-                            if (autoSetState > 0) {
-                                autoSet();
-                            }
-
-                            synchronized(g_wave) {
-                                mGraph.setWave(g_wave, sampleLength);    // draw graph
-                            }
-
-                            if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
-
-                                // On the device side, since it will change freely internally, there is no need to send runninng mode change
-                                runModeSetStop();
-
-                                tbtn_stop.setChecked(true);
-                                if (D) Log.d(TAG, "Stop botton set cheched");
-                            }
-                        }
-                    });
-                }
-
-                try{
-                    sleep(1L);
-                }catch (InterruptedException e){
+                    mHandler.post(mDrawGraphPost);
                 }
             }
         }
+
+        private final Runnable mDrawGraphPost = new Runnable() {
+            @Override
+            public void run() {
+                if (calibration == true) {
+                    calibrate(lawSamples);
+                }
+
+                if (biasCalibState > 0) {
+                    biasCalib(lawSamples);
+                }
+
+                if (autoSetState > 0) {
+                    autoSet();
+                }
+
+                synchronized(g_wave) {
+                    mGraph.setWave(g_wave, sampleLength);    // draw graph
+                }
+
+                if (triggerMode == TGMODE_SINGLE) {        // SINGLE mode
+
+                    // On the device side, since it will change freely internally, there is no need to send runninng mode change
+                    runModeSetStop();
+
+                    tbtn_stop.setChecked(true);
+                    if (D) Log.d(TAG, "Stop botton set cheched");
+                }
+            }
+        };
 
         public void endThread(){
             running = false;
@@ -1257,9 +1293,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
     // Send message for device
     private void sendMessage(int m, int d) {
-        if (epw_Msg == null) return;
+        if (epw_Msg == null ) return;
 
-        byte[] buffer = new byte[EpOutPacketSize];
+        byte[] buffer = new byte[EP_OUT_PACKET_SIZE];
         buffer[0] = (byte) m;
         buffer[1] = (byte) (0xff & d);
         buffer[2] = (byte) ((0xff00 & d) >> 8);
