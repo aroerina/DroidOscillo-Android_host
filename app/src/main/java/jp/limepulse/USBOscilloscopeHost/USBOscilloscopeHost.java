@@ -8,6 +8,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -56,8 +60,8 @@ import android.widget.Toast;
 
 public class USBOscilloscopeHost extends Activity implements OnClickListener, OnLongClickListener {
     // Debugging
-    //private boolean D = false;		// Release
-    private boolean D = true;     // Debug Mode
+    private boolean D = false;		// Release
+    //private boolean D = true;     // Debug Mode
 
     private static final String TAG = "USBOscilloscopeHost";
     private static final String ACTION_USB_PERMISSION = "com.google.android.HID.action.USB_PERMISSION";
@@ -172,9 +176,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private double one_lsb_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP / SAMPLE_MAX;
     private int normal_graph_fullscale = TYPICAL_FULLSCALE_MAX_VAL;
     private int normal_graph_min = (SAMPLE_MAX - TYPICAL_FULLSCALE_MAX_VAL) / 2;
-    // Voltscale 8 full scale value
+    // VoltDiv 8 full scale value
     public int vs8_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP) * 0.5);
-    // Voltscale 9 full scale value
+    // VoltDiv 9 full scale value
     public int vs9_graph_fullscale = (int) (SAMPLE_MAX * (GRAPH_FULLSCALE_VOLTAGE / TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP) * 0.25);
     private double g_vpos_max, g_vpos_min;
     //private double opamp_feedback_fix_ratio = 1.0;
@@ -224,8 +228,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     // UI Objects
     private ImageView img_trigger, img_connect, img_range;
     private GraphView mGraph = null;
-    private TextView FrameRateText, triggerModeText, TimescaleText, HPotisionText, VPotisionText;
-    private TextView RunStopText, BiasText, VoltscaleText, VppText, FreqText, VrmsText, MeanText;
+    private TextView FrameRateText, triggerModeText, TimeDivText, HPotisionText, VPotisionText;
+    private TextView RunStopText, BiasText, VoltDivText, VppText, FreqText, VrmsText, MeanText;
     private Button trig_mode_button, calibration_btn, edge_btn, btn_test1, btn_test2;
     private Button td_zoom_btn, td_unzoom_btn, btn_volt_zoom, btn_volt_unzoom, btn_setzero;
     private Button btn_autoset, btn_setting,btn_fft;
@@ -258,12 +262,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private int epw_FirmPacketSize;
     private Timer SendTimer;
     private boolean isConnected = false;
-    private boolean autoModeNormal = false;
-    //private UsbReceiveTask usbReceiveTask;
 
     Handler mHandler;
     PendingIntent mPermissionIntent;
-    private boolean enableFlashText = true;        // For disable flash text at startup
+    private volatile boolean enableFlashText = false;        // For disable flash text at startup
 
     Vibrator vibrator;
 
@@ -272,14 +274,17 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     private boolean isScopeRunning = true, dc_cut, triggerSlopeUp = true, x10Mode, expand;
     private boolean calibration = false;
     private int sampleLength;//,sampleSizeByte;
-    private int timescale, voltscale, graph_fullscale, graph_min;
+    private int timeDiv, voltDiv, graph_fullscale, graph_min;
 
     private double proveRatio = 1.0;
     //g_bias_pos,g_vpos : 0 is the bottom of the graph 0.5, the center 1 is the highest position
     //g_hpos : 0 is the center. -1 is the left edge of the graph. 1 is the right end of the graph
     private double g_bias_pos, g_vpos, g_hpos;
     private WaveAnalizer waveMeta;
-    //private boolean long_click_detected = false;
+    //private boolean long_click_detected = false
+
+    // 接続からサンプル送信開始までを遅延させる時間
+    private long sampleTransmitDelayTime = 100L;
 
 
     // Constructor
@@ -319,7 +324,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         TIME_CONVERT_LIST[0] = 0.000001;
         TIME_CONVERT_LIST[1] = TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[2] = TIME_CONVERT_LIST[0];
-        TIME_CONVERT_LIST[3] = TIME_CONVERT_LIST[0];    // timescale 0~5 are same samplerate(80Msps)
+        TIME_CONVERT_LIST[3] = TIME_CONVERT_LIST[0];    // timeDiv 0~5 are same samplerate(80Msps)
         TIME_CONVERT_LIST[4] = TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[5] = TIME_CONVERT_LIST[0];
         TIME_CONVERT_LIST[6] = 0.0000025;
@@ -401,8 +406,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         editor = sharedData.edit();
 
 
-        voltscale = sharedData.getInt(KEY_VSCALE, 0);
-        timescale = sharedData.getInt(KEY_HSCALE, 10);
+        voltDiv = sharedData.getInt(KEY_VSCALE, 0);
+        timeDiv = sharedData.getInt(KEY_HSCALE, 10);
         triggerMode = sharedData.getInt(KEY_TRIGGER_MODE, TGMODE_AUTO);
         triggerSlopeUp = sharedData.getBoolean(KEY_TRIGGER_SLOPE, true);
         dc_cut = sharedData.getBoolean(KEY_DCCUT, false);
@@ -419,12 +424,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         FrameRateText = (TextView) findViewById(R.id.text_framerate);
         triggerModeText = (TextView) findViewById(R.id.text_trigger_mode);
-        TimescaleText = (TextView) findViewById(R.id.text_timescale);
+        TimeDivText = (TextView) findViewById(R.id.text_timediv);
         HPotisionText = (TextView) findViewById(R.id.text_h_trigger);
         VPotisionText = (TextView) findViewById(R.id.textVtrigger);
         RunStopText = (TextView) findViewById(R.id.text_run_stop);
         BiasText = (TextView) findViewById(R.id.text_bias);
-        VoltscaleText = (TextView) findViewById(R.id.text_voltscale);
+        VoltDivText = (TextView) findViewById(R.id.text_voltdiv);
         VppText = (TextView) findViewById(R.id.text_vpp);
         FreqText = (TextView) findViewById(R.id.text_freq);
         VrmsText = (TextView) findViewById(R.id.text_vrms);
@@ -557,10 +562,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                         FrameRateText.setText("FPS:" + Integer.toString(mGraph.frameRateGetAndReset()));
                         if (waveMeta == null) return;
 
-                        VppText.setText("Vpp:" + String.format("%7s", siConverter(waveMeta.vpp * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio) + "V"));
+                        VppText.setText("Vpp:" + String.format("%7s", siConverter(waveMeta.vpp * FULLSCALE_VOLTAGE_LIST[voltDiv] * proveRatio) + "V"));
                         FreqText.setText("Frq:" + String.format("%5s", siConverter(waveMeta.freq)) + "Hz");
-                        VrmsText.setText("Vrms:" + String.format("%5s", siConverter(waveMeta.vrms * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
-                        MeanText.setText("Mean:" + String.format("%5s", siConverter(waveMeta.mean * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio)) + "V");
+                        VrmsText.setText("Vrms:" + String.format("%5s", siConverter(waveMeta.vrms * FULLSCALE_VOLTAGE_LIST[voltDiv] * proveRatio)) + "V");
+                        MeanText.setText("Mean:" + String.format("%5s", siConverter(waveMeta.mean * FULLSCALE_VOLTAGE_LIST[voltDiv] * proveRatio)) + "V");
 
 //						if(waveMeta.range_status == WaveAnalizer.RANGE_IN){
 //							img_range.setImageResource(R.drawable.over_range_in);
@@ -714,11 +719,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         img_connect.setImageResource(R.drawable.connected);
 
         byte[] ReadBuffer = new byte[EP_IN_PACKET_SIZE];
-        sendMessage(MESSAGE_IS_CONFIGURED, 1);        //ファームウェアが書き込まれていないか調べる
-        int result = deviceConnection.bulkTransfer(endPointRead, ReadBuffer, 1, 200);
+        //sendMessage(MESSAGE_IS_CONFIGURED, 1);        //ファームウェアが書き込まれていないか調べる
+        //int result = deviceConnection.bulkTransfer(endPointRead, ReadBuffer, 1, 200);
 
-        if (D) Log.w(TAG, "result "+ Integer.toString(result));
-        if(result == -1) {
+        //if (D) Log.w(TAG, "result "+ Integer.toString(result));
+
+        if(sendFirmware) {
             // Firmware transmit
             Resources res = getResources();
             if (D) Log.d(TAG, "Send firmware");
@@ -779,22 +785,25 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         //
         // Oscilloscope configuration value set
         //
-        setParameters();
+
+        //setParameters();
+    }
+
+    // Oscilloscope configuration
+    private void setParameters() {
+
+        setVoltDiv(true);    // also call setBias()
+        setTriggerSlope();
+        setVTrigger(true);
 
         if (dc_cut) {
             sendMessage(MESSAGE_DCCUT, 1);
         } else {
             sendMessage(MESSAGE_DCCUT, 0);
         }
-    }
 
-    // Oscilloscope configuration
-    private void setParameters() {
-        setTimescale();        // also call setHTrigger()
-        setVoltscale(true);    // also call setBias()
-        setTriggerSlope();
-        setVTrigger(true);
-        //setTriggerMode();
+        setTimeDiv();        // also call setHTrigger()
+        setTriggerMode();
     }
 
 
@@ -844,14 +853,14 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     // Read calibration value and setup vertical axis
     //
     private void setupVerticalAxis() {
-        if (voltscale < VOLTSCALE_200MV) {
+        if (voltDiv < VOLTSCALE_200MV) {
             adc_max_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP + ((double) highdiv_input_calib_voltage / 1000);
         } else {
             adc_max_voltage = TYPICAL_ADC_INPUT_MAX_VOLTAGE_PP + ((double) lowdiv_input_calib_voltage / 1000);
         }
-        adc_max_voltage = adc_max_voltage / TYPICAL_AMP_ERROR[voltscale];
+        adc_max_voltage = adc_max_voltage / TYPICAL_AMP_ERROR[voltDiv];
 
-        if (timescale <= 5) {        // for input impedance down at 80Msps
+        if (timeDiv <= 5) {        // for input impedance down at 80Msps
             adc_max_voltage = adc_max_voltage * ADC_MAX_VOLTAGE_DROP_AT_80MSPS;
         }
 
@@ -864,10 +873,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         g_vpos_max = 1 + (((adc_max_voltage / GRAPH_FULLSCALE_VOLTAGE) - 1) / 2);
         g_vpos_min = -(((adc_max_voltage / GRAPH_FULLSCALE_VOLTAGE) - 1) / 2);
 
-        if (voltscale <= 7) {
+        if (voltDiv <= 7) {
             graph_fullscale = normal_graph_fullscale;
             graph_min = normal_graph_min;
-        } else if (voltscale == 8) {
+        } else if (voltDiv == 8) {
             graph_fullscale = vs8_graph_fullscale;
             graph_min = (SAMPLE_MAX - vs8_graph_fullscale) / 2;
         } else {
@@ -897,10 +906,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         opamp_offset_calib_value_list[8] = opamp_offset_calib_value_list[7];
         opamp_offset_calib_value_list[9] = opamp_offset_calib_value_list[7];
 
-        if (voltscale <= 7) {
-            bias_lower = (int) (normal_bias_lower * TYPICAL_AMP_ERROR[voltscale]);
-            bias_upper = (int) (normal_bias_upper * TYPICAL_AMP_ERROR[voltscale]);
-        } else if (voltscale == 8) {
+        if (voltDiv <= 7) {
+            bias_lower = (int) (normal_bias_lower * TYPICAL_AMP_ERROR[voltDiv]);
+            bias_upper = (int) (normal_bias_upper * TYPICAL_AMP_ERROR[voltDiv]);
+        } else if (voltDiv == 8) {
             bias_lower = normal_bias_lower / 2;
             bias_upper = normal_bias_upper / 2;
         } else {
@@ -910,41 +919,102 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     }
 
 
-    private ByteBuffer copyBuffer;
-    volatile boolean isReceived;
+    // 最大キューサイズ
+    private static final int MAX_QUEUE_SIZE = 10;
+    // プールの初期サイズ
+    private static final int INIT_POOL_SZ = MAX_QUEUE_SIZE;
+    // 最大プールサイズ0
+    private static final int MAX_POOL_SZ = MAX_QUEUE_SIZE+4;
+    // 最大リクエストサイズ
+    private static final int MAX_REQUESTS = MAX_QUEUE_SIZE;
+
+    // 同じエンドポイントに割り当てるリクエスト(バッファ)を増やしてパケット受信ロスする可能性を低くする。
+    // 受信用バッファプール
+    private class ReceiveBufferPool {
+
+        // フレームデータプールを作る(リアローケーション防止のため)
+        private final List<ByteBuffer> mPool;
+
+        // プールの初期化
+        ReceiveBufferPool() {
+            mPool = new ArrayList<ByteBuffer>(INIT_POOL_SZ);
+
+            for (int i = 0; i < INIT_POOL_SZ; i++) {
+                mPool.add(ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
+                        .order(ByteOrder.nativeOrder()));
+            }
+        }
+
+        private ByteBuffer obtain() {
+            ByteBuffer result = null;
+            synchronized (mPool) {
+                if (!mPool.isEmpty()) {
+                    result = mPool.remove(mPool.size() - 1);
+                }
+            }
+            if (result == null) {
+                if (D) Log.w(TAG, "create ByteBuffer");
+                result = ByteBuffer.allocateDirect(READ_BUFFER_SIZE)
+                        .order(ByteOrder.nativeOrder());
+            }
+            result.clear();
+            return result;
+        }
+
+        public void recycle(final ByteBuffer buf) {
+            synchronized (mPool) {
+                if (mPool.size() < MAX_POOL_SZ) {
+                    mPool.add(buf);
+                }
+            }
+        }
+
+        public boolean queueRequest(final UsbRequest request) {
+            boolean result = false;
+            final ByteBuffer buf = obtain();
+            if (buf != null) {
+                request.setClientData(buf);
+                result = request.queue(buf, READ_BUFFER_SIZE);
+            }
+            return result;
+        }
+    }
+
+    ReceiveBufferPool bufferPool;
+
+
+    // 描画待ちのフレームデータFIFO
+    private LinkedBlockingQueue<ByteBuffer> mFrameQueue;
+
+    private void drawFrameOffer(final ByteBuffer buffer) {
+        if (!mFrameQueue.offer(buffer)) {
+            if (D) Log.w(TAG, "frame queue is full, frame dropped");
+            // 必要であれば、一番古いデータ=先頭を除去してから
+            // 再度offerを試みるとよい
+        }
+    }
+
 
     private class UsbReceiveThread extends Thread {
 
         // 同じエンドポイントに割り当てるリクエスト(バッファ)を増やしてパケット受信ロスする可能性を低くする。
         // 増やすとメモリを食う
         // 主にSH22用
-        private  final int NUM_RECEIVE_BUFFERS = 5;
-
-
         private GraphDrawThread graphDrawThread;
-        private ByteBuffer [] ReceiveBuffers;
         private UsbRequest [] inRequests;
 
         UsbReceiveThread(){
-            ReceiveBuffers = new ByteBuffer[NUM_RECEIVE_BUFFERS];
-            inRequests = new UsbRequest[NUM_RECEIVE_BUFFERS];
-
-            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
-                ReceiveBuffers[i] = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
-                ReceiveBuffers[i].order(ByteOrder.nativeOrder());    // set endian to native
-                inRequests[i] = new UsbRequest();
-            }
-
-            copyBuffer = ByteBuffer.allocateDirect(READ_BUFFER_SIZE);
-            copyBuffer.order(ByteOrder.nativeOrder());
+            inRequests = new UsbRequest[MAX_REQUESTS];
+            bufferPool = new ReceiveBufferPool();
+            mFrameQueue = new LinkedBlockingQueue<ByteBuffer>(MAX_QUEUE_SIZE);
             graphDrawThread = new GraphDrawThread();
-            isReceived = false;
         }
 
         @Override
         public void run() {
 
-            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++) {
+            for(int i=0;i<MAX_REQUESTS;i++) {
+                inRequests[i] = new UsbRequest();
                 if (inRequests[i].initialize(deviceConnection, endPointRead) == true) {
                     if (D) Log.i(TAG, "inRequest initialize suceeded.");
                 } else {
@@ -955,78 +1025,61 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             graphDrawThread.start();
 
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if(isScopeRunning) {
-                        setTriggerMode();
+
+
+            if (deviceConnection != null && endPointRead != null && isConnected) {
+                for (int i = 0; i < MAX_REQUESTS; i++) {
+                    if (!bufferPool.queueRequest(inRequests[i])) {
+                        if (D) Log.e(TAG, "Request queueing error occured");
+                        EndConnection();    // thread stop
+                        return;
                     }
-                    enableFlashText = true;
-                }
-            });
-
-
-            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
-                if (inRequests[i].queue(ReceiveBuffers[i], READ_BUFFER_SIZE) == false){
-                    if (D) Log.e(TAG, "Request queueing error occured");
-                    EndConnection();    // thread stop
-                    break;
                 }
             }
 
-            UsbRequest retRequest;
-            int retRequestNumber = 0;
-            ByteBuffer retBuffer;
+            // サンプル送信開始を受信スレッド開始まで遅延させる
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if(isScopeRunning) {
+                        setParameters();
+                    }
+
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            enableFlashText = true;
+                        }
+                    },1000L);
+
+                }
+            },sampleTransmitDelayTime);
 
             //
             //		main loop
             //
             while (deviceConnection != null && endPointRead != null && isConnected) {
 
+                final UsbRequest request = deviceConnection.requestWait();
 
-                retRequest = deviceConnection.requestWait();
+                if ((request != null) && (request.getEndpoint() == endPointRead)) {
 
-                if (retRequest != null) {    //Request received
-                    if(D) Log.i(TAG, "Request received.");
+                    final ByteBuffer buf = (ByteBuffer)request.getClientData();
 
-                    for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
-                        if(retRequest == inRequests[i]){
-                            retRequestNumber = i;
-                            break;
-                        }
+                    if (buf != null) {  // これはなくてもいいけど万が一
+                        buf.flip();
+                        drawFrameOffer(buf);
+                        bufferPool.queueRequest(request);
                     }
-
-                    retBuffer = ReceiveBuffers[retRequestNumber];
-                    retBuffer.clear();
-                } else {
-                    if (D) Log.e(TAG, "In Request waiting error occured");
-                    EndConnection();    // thread stop
-                    break;
                 }
-
-                synchronized (copyBuffer) {
-                    copyBuffer.clear();
-                    copyBuffer.put(retBuffer);
-                }
-                isReceived = true;
-
-                if(inRequests[retRequestNumber].queue(retBuffer, READ_BUFFER_SIZE) == false){
-                    if (D) Log.e(TAG, "Request queueing error occured");
-                    EndConnection();    // thread stop
-                    break;
-                }
-
-                synchronized (graphDrawThread) {
-                    graphDrawThread.notify();
-                }
-
             }
 
-            for(int i=0;i<NUM_RECEIVE_BUFFERS;i++){
+            for(int i=0;i<MAX_REQUESTS;i++){
                 inRequests[i].cancel();
                 inRequests[i].close();
                 inRequests[i] = null;
             }
+
 
             // deviceConnection shutdown
             deviceConnection = null;
@@ -1066,25 +1119,24 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             while(running) {
 
-                try{
-                    wait();
-                }catch(Exception e){}
+                try {
+                    // ここの待ち時間は好きなように。とりあえず30ミリ秒
+                    // 想定受信間隔以上にしておけばいいと思う。
+                    // 無限待ちにした場合は終了させる時にスレッドをinterruptしなきゃだめ
+                    buffer = mFrameQueue.poll(30, TimeUnit.MILLISECONDS);
+                } catch (final InterruptedException e) {
+                    break;
+                }
 
-                if(isReceived) {
+                if(buffer != null && buffer.limit() == READ_BUFFER_SIZE) {
 
-                    isReceived = false;
-                    buffer.clear();
-                    synchronized (copyBuffer) {
-                        copyBuffer.clear();
-                        buffer.put(copyBuffer);
-                    }
-
-                    buffer.clear();
                     for (int i = 0; i < sampleLength; i++) {
                         lawSamples[i] = (int) buffer.getShort();     // 2byte to short
                     }
 
-                    synchronized(g_wave) {
+                    bufferPool.recycle(buffer);
+
+                    synchronized (g_wave) {
                         // Convert to data with graph height set to 0~1
                         for (int i = 0; i < sampleLength; i++) {
                             g_wave[i] = (double) (lawSamples[i] - graph_min) / graph_fullscale;    // 範囲を狭める
@@ -1284,7 +1336,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             }
 
             if (num_waves > 0) {
-                freq = (1.0 / ((((double) aqum_time * (TIME_CONVERT_LIST[timescale] / 80.0)) / (double) num_waves)));// * 2;
+                freq = (1.0 / ((((double) aqum_time * (TIME_CONVERT_LIST[timeDiv] / 80.0)) / (double) num_waves)));// * 2;
             }
 
         }
@@ -1386,17 +1438,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         RunStopText.setTextColor(Color.RED);
     }
 
-    public void runModeSetRun() {
-        isScopeRunning = true;
-        RunStopText.setText("RUN");
-        RunStopText.setTextColor(Color.GREEN);
-    }
-
     private void setTriggerMode() {
 
         if(isScopeRunning == false){
             sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);
-        } else  if(triggerMode == TGMODE_AUTO && timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
+        } else  if(triggerMode == TGMODE_AUTO && timeDiv >= ROLEVIEW_SWITCH_TIMESCALE) {
             sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);         // AUTOMODEでサンプル速度が遅い時はFREE
         } else {
             sendMessage(MESSAGE_RUNMODE, triggerMode);
@@ -1409,9 +1455,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     }
 
 
-    private void setTimescale() {
+    private void setTimeDiv() {
 
-        switch (timescale) {
+        switch (timeDiv) {
             case TIMESCALE_25NS:
                 sampleLength = 20;
                 break;
@@ -1427,7 +1473,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             case TIMESCALE_500NS:
                 sampleLength = 400;
                 break;
-            default:    // timescale >= 5
+            default:    // timeDiv >= 5
                 sampleLength = 800;
         }
 
@@ -1435,26 +1481,21 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         setupVerticalAxis();
         setupBias();
 
-        sendMessage(MESSAGE_TIMESCALE, timescale);
+        sendMessage(MESSAGE_TIMESCALE, timeDiv);
         setHTrigger();                        // For re calculate oscilloscope trigger timer
         setBias(true);
 
         // Role view mode setting
         // ADC低速時 AUTOモードは内部的にFREEにする
         if(triggerMode == TGMODE_AUTO) {
-            if (timescale >= ROLEVIEW_SWITCH_TIMESCALE) {
+            if (timeDiv >= ROLEVIEW_SWITCH_TIMESCALE) {
                 sendMessage(MESSAGE_RUNMODE, TGMODE_FREE);
             } else {
                 sendMessage(MESSAGE_RUNMODE, TGMODE_AUTO);
             }
         }
 
-        TimescaleText.setText("Td:" + String.format("%5s", TIME_SCALE_LIST[timescale]));
-
-        if (enableFlashText) {
-            mGraph.setFlashText("Time/div = " + TIME_SCALE_LIST[timescale]);
-            blinkTextBG(TimescaleText, Color.GRAY);
-        }
+        TimeDivText.setText("Td:" + String.format("%5s", TIME_SCALE_LIST[timeDiv]));
     }
 
 
@@ -1468,7 +1509,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         //if(D)Log.d(TAG, "Set pos = " + Double.toString(pos));
 
 
-        double ht_real = g_hpos * TIME_CONVERT_LIST[timescale] * 5.0;
+        double ht_real = g_hpos * TIME_CONVERT_LIST[timeDiv] * 5.0;
 
         String htrigger_time_text = String.format("%7s", siConverter(ht_real) + "s");
         HPotisionText.setText("HT:" + htrigger_time_text);
@@ -1494,7 +1535,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
 
 
-        double realVoltage = (g_vpos - g_bias_pos) * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio;
+        double realVoltage = (g_vpos - g_bias_pos) * FULLSCALE_VOLTAGE_LIST[voltDiv] * proveRatio;
         //VPotisionText.setText("VT:"+Integer.toString(verTriggerValue));		// display low value
 
         String vtvoltage_text = String.format("%7s", siConverter(realVoltage) + "V");
@@ -1513,9 +1554,9 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 bias = bias_center + (int) (((g_bias_pos - 0.5) * 2.0) * bias_upper);
             }
 
-            bias = bias + opamp_offset_calib_value_list[voltscale];
+            bias = bias + opamp_offset_calib_value_list[voltDiv];
 
-//	    	if(timescale <= 5){	// at 80Msps
+//	    	if(timeDiv <= 5){	// at 80Msps
 //	    		bias += BIAS_DROP_CALIBVAL_AT_80MSPS ;
 //    		}
 
@@ -1532,7 +1573,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
         setVTrigger(false);
         //BiasText.setText("BI:"+Integer.toString(bias));	// display low value
-        double real = (g_bias_pos - 0.5) * FULLSCALE_VOLTAGE_LIST[voltscale] * proveRatio;
+        double real = (g_bias_pos - 0.5) * FULLSCALE_VOLTAGE_LIST[voltDiv] * proveRatio;
 
         String bias_voltage = String.format("%7s", siConverter(real) + "V");
         BiasText.setText("PS:" + bias_voltage);
@@ -1550,38 +1591,39 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
     }
 
-    public void changeVoltscale(int vs){
-        voltscale = vs;
+    public void changeVoltDiv(int vs){
+        voltDiv = vs;
     }
 
-    public void changeTimescale(int ts){
-        timescale = ts;
+    public void changeTimeDiv(int ts){
+        timeDiv = ts;
     }
 
-    public void setVoltscale(boolean isSendData) {
+    // set Volatage devision
+    public void setVoltDiv(boolean isSendData) {
 
         if (isSendData) {
-            sendMessage(MESSAGE_VOLTAGE_SCALE, voltscale);
+            sendMessage(MESSAGE_VOLTAGE_SCALE, voltDiv);
         }
         String scale;
 
         if (x10Mode) {
-            scale = VOLT_SCALE_LIST_X10[voltscale];
+            scale = VOLT_SCALE_LIST_X10[voltDiv];
         } else {
-            scale = VOLT_SCALE_LIST[voltscale];
+            scale = VOLT_SCALE_LIST[voltDiv];
         }
         String s = String.format("%4s", scale);
 
-        VoltscaleText.setText("Vd:" + s);
+        VoltDivText.setText("Vd:" + s);
         if (enableFlashText) {
             mGraph.setFlashText("Volt/div = " + scale);
         }
 
 //		//hide button
-//		if(voltscale==0){
+//		if(voltDiv==0){
 //			btn_volt_zoom.setVisibility(View.INVISIBLE);
 //			btn_volt_unzoom.setVisibility(View.VISIBLE);
-//		} else if(voltscale==(NUM_VOLTSCALE-1)){
+//		} else if(voltDiv==(NUM_VOLTSCALE-1)){
 //			btn_volt_zoom.setVisibility(View.VISIBLE);
 //			btn_volt_unzoom.setVisibility(View.INVISIBLE);
 //		} else {
@@ -1613,7 +1655,6 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     int gndValue = 0, gndValue200mV = 0;
     ;
     int calibrateReceivedCount = 0;
-    double bias_vs_adc_ratio;
 
     public void calibrate(int[] samples) {
 
@@ -1635,8 +1676,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             setupVerticalAxis();
             setupBias();
 
-            voltscale = VOLTSCALE_5V;  // 5V div
-            setVoltscale(true);
+            voltDiv = VOLTSCALE_5V;  // 5V div
+            setVoltDiv(true);
 
             if (dc_cut == true) {
                 dc_cut = false;
@@ -1644,8 +1685,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             }
 
 
-            timescale = TIMESCALE_2P5MS;        // 2.5ms
-            setTimescale();
+            timeDiv = TIMESCALE_2P5MS;        // 2.5ms
+            setTimeDiv();
 
             if (isScopeRunning == false) {
                 RunStopToggle();
@@ -1666,8 +1707,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         } else if (calibrateReceivedCount == (exe++)) {        // get GND value
             gndValue = getDC(samples);        // GND value at 5V/div
 
-            voltscale = VOLTSCALE_200MV;  // 200mV div
-            setVoltscale(true);
+            voltDiv = VOLTSCALE_200MV;  // 200mV div
+            setVoltDiv(true);
             sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
 
         } else if (calibrateReceivedCount == (exe++)) {        // get GND value
@@ -1721,8 +1762,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             if (D)
                 Log.d(TAG, "adc input calibration voltage = " + Integer.toString(lowdiv_input_calib_voltage) + "mV" + "\n waiting disconnect calibrator");
 
-            voltscale = VOLTSCALE_5V;
-            setVoltscale(true);
+            voltDiv = VOLTSCALE_5V;
+            setVoltDiv(true);
 
 
         } else if (calibrateReceivedCount == (exe++)) {        // Calibrator connection detected
@@ -1764,8 +1805,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             //	Get OPAMP input offset voltage
             //
             // OPA4354's input offset voltage is Typical +-2mV. Max +-8mV
-            voltscale = 3;        // 500mV/div
-            setVoltscale(true);
+            voltDiv = 3;        // 500mV/div
+            setVoltDiv(true);
             triggerMode = TGMODE_FREE;
             setTriggerMode();
         } else if (calibrateReceivedCount == (exe++)) {
@@ -1786,8 +1827,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             Toast.makeText(this, "Opamp HIGH input offset value: " + Integer.toString(highdiv_opa_diff), Toast.LENGTH_SHORT).show();
 
-            voltscale = VOLTSCALE_20MV;
-            setVoltscale(true);
+            voltDiv = VOLTSCALE_20MV;
+            setVoltDiv(true);
         } else if (calibrateReceivedCount == (exe++)) {
             //Do nothing
         } else if (calibrateReceivedCount == (exe++)) {
@@ -1853,11 +1894,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             adc_vs_bias = TYPICAL_BIAS_LSB_VOLTAGE / one_lsb_voltage;        // DAC 1LSB vs bias output voltage
 
-            voltscale = VOLTSCALE_5V;        // 5V
-            sendMessage(MESSAGE_VOLTAGE_SCALE, voltscale);
+            voltDiv = VOLTSCALE_5V;        // 5V
+            sendMessage(MESSAGE_VOLTAGE_SCALE, voltDiv);
 
-            timescale = TIMESCALE_2P5MS;        // 2.5ms
-            sendMessage(MESSAGE_TIMESCALE, timescale);
+            timeDiv = TIMESCALE_2P5MS;        // 2.5ms
+            sendMessage(MESSAGE_TIMESCALE, timeDiv);
 
             bias_val = (TYPICAL_BIAS_FS_VALUE / 2) + TYPICAL_BIAS_BOTTOM;
             sendMessage(MESSAGE_BIAS, bias_val);        // Position at graph center
@@ -1972,15 +2013,15 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         triggerMode = TGMODE_SINGLE_FREE;
 
         sendMessage(MESSAGE_RUNMODE, TGMODE_DEVICE_STOP);    // stop
-        voltscale = VOLTSCALE_5V;                                      // V/div = 5V
-        setVoltscale(true);
+        voltDiv = VOLTSCALE_5V;                                      // V/div = 5V
+        setVoltDiv(true);
         g_bias_pos = 0.5;
         setBias(true);
 
-        timescale = TIMESCALE_10MS;                                     // 10ms
+        timeDiv = TIMESCALE_10MS;                                     // 10ms
 
         isScopeRunning = true;
-        setTimescale();
+        setTimeDiv();
         autoSetState = 1;
 
         sendMessage(MESSAGE_RUNMODE, TGMODE_SINGLE_FREE);    //Free single shot mode
@@ -2032,11 +2073,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             // Select the maximum voltage range that will be greater than 2.5V/div
             if (waveMeta.vpp < (2.5 / 8.0)) {
-                voltscale++;
-                if (voltscale >= (NUM_VOLTSCALE - 1)) {
+                voltDiv++;
+                if (voltDiv >= (NUM_VOLTSCALE - 1)) {
                     autoSetState = 0;
                 }
-                setVoltscale(true);
+                setVoltDiv(true);
             } else {
                 autoSetState++;
                 //autoSetState = 0;
@@ -2046,20 +2087,20 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         } else if (autoSetState == 6) {    // Horizontal range select
             if (waveMeta.num_waves < 2) {
 
-                timescale++;
-                setTimescale();
+                timeDiv++;
+                setTimeDiv();
 
-                if (timescale > 20) {
+                if (timeDiv > 20) {
                     autoSetState = 0;
                 }
             } else if (waveMeta.num_waves < 5) {
                 autoSetState = 0;
             } else {
 
-                timescale--;
-                setTimescale();
+                timeDiv--;
+                setTimeDiv();
 
-                if (timescale == 0) {
+                if (timeDiv == 0) {
                     autoSetState = 0;
                 }
             }
@@ -2087,6 +2128,10 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
     boolean occupied = false;
 
     private void blinkTextBG(TextView t, int c) {
+        if(!enableFlashText){
+            return;
+        }
+
         if (occupied == true) {
             return;
         }
@@ -2345,8 +2390,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             voltageDivListL.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    main_act.changeVoltscale(position);
-                    main_act.setVoltscale(true);
+                    main_act.changeVoltDiv(position);
+                    main_act.setVoltDiv(true);
                     Log.i(TAG,Integer.toString(voltageDivListL.getChildCount()));
                     dismiss();
                 }
@@ -2355,8 +2400,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             voltageDivListR.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                   @Override
                   public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                      main_act.changeVoltscale(position+5);
-                      main_act.setVoltscale(true);
+                      main_act.changeVoltDiv(position+5);
+                      main_act.setVoltDiv(true);
                       dismiss();
                   }
             });
@@ -2412,8 +2457,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             time_dialog_list[0].setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    main_act.changeTimescale(TIMESCALE_1S-position);
-                    main_act.setTimescale();
+                    main_act.changeTimeDiv(TIMESCALE_1S-position);
+                    main_act.setTimeDiv();
                     dismiss();
                 }
             });
@@ -2421,8 +2466,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             time_dialog_list[1].setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    main_act.changeTimescale(TIMESCALE_10MS-position);
-                    main_act.setTimescale();
+                    main_act.changeTimeDiv(TIMESCALE_10MS-position);
+                    main_act.setTimeDiv();
                     dismiss();
                 }
             });
@@ -2430,8 +2475,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             time_dialog_list[2].setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    main_act.changeTimescale(TIMESCALE_100US-position);
-                    main_act.setTimescale();
+                    main_act.changeTimeDiv(TIMESCALE_100US-position);
+                    main_act.setTimeDiv();
                     dismiss();
                 }
             });
@@ -2439,8 +2484,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             time_dialog_list[3].setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    main_act.changeTimescale(TIMESCALE_1US-position);
-                    main_act.setTimescale();
+                    main_act.changeTimeDiv(TIMESCALE_1US-position);
+                    main_act.setTimeDiv();
                     dismiss();
                 }
             });
@@ -2531,13 +2576,13 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             // Voltage scale - button
             case R.id.btn_volt_unzoom:
-                if (0 < voltscale) {
-                    voltscale--;
-                    setVoltscale(true);
-                    blinkTextBG(VoltscaleText, Color.GRAY);
+                if (0 < voltDiv) {
+                    voltDiv--;
+                    setVoltDiv(true);
+                    blinkTextBG(VoltDivText, Color.GRAY);
 
                 } else {
-                    blinkTextBG(VoltscaleText, Color.RED);
+                    blinkTextBG(VoltDivText, Color.RED);
                     vibrator.vibrate(50);        // Vibrate
                 }
                 break;
@@ -2545,12 +2590,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
             // Voltage scale+ button
             case R.id.btn_volt_zoom:
 
-                if ((NUM_VOLTSCALE - 1) > voltscale) {
-                    voltscale++;
-                    setVoltscale(true);
-                    blinkTextBG(VoltscaleText, Color.GRAY);
+                if ((NUM_VOLTSCALE - 1) > voltDiv) {
+                    voltDiv++;
+                    setVoltDiv(true);
+                    blinkTextBG(VoltDivText, Color.GRAY);
                 } else {
-                    blinkTextBG(VoltscaleText, Color.RED);
+                    blinkTextBG(VoltDivText, Color.RED);
                     vibrator.vibrate(50);
                 }
                 break;
@@ -2558,11 +2603,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             // Time scale+ button
             case R.id.btn_time_zoom:
-                if (0 < timescale) {
-                    timescale--;
-                    setTimescale();
+                if (0 < timeDiv) {
+                    timeDiv--;
+                    setTimeDiv();
                 } else {
-                    blinkTextBG(TimescaleText, Color.RED);
+                    blinkTextBG(TimeDivText, Color.RED);
                     vibrator.vibrate(50);
                 }
 
@@ -2570,11 +2615,11 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
 
             // Time scale- button
             case R.id.btn_time_unzoom:
-                if ((NUM_TIMESCALE - 1) > timescale) {
-                    timescale++;
-                    setTimescale();
+                if ((NUM_TIMESCALE - 1) > timeDiv) {
+                    timeDiv++;
+                    setTimeDiv();
                 } else {
-                    blinkTextBG(TimescaleText, Color.RED);
+                    blinkTextBG(TimeDivText, Color.RED);
                     vibrator.vibrate(50);
                 }
                 break;
@@ -2616,7 +2661,7 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
                 } else {
                     proveRatio = 1.0;
                 }
-                setVoltscale(false);
+                setVoltDiv(false);
                 setBias(false);
                 break;
 
@@ -2818,8 +2863,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         editor = sharedData.edit();
         editor.putInt(KEY_TRIGGER_MODE, triggerMode);
         editor.putBoolean(KEY_TRIGGER_SLOPE, triggerSlopeUp);
-        editor.putInt(KEY_VSCALE, voltscale);
-        editor.putInt(KEY_HSCALE, timescale);
+        editor.putInt(KEY_VSCALE, voltDiv);
+        editor.putInt(KEY_HSCALE, timeDiv);
         editor.putFloat(KEY_VPOS, (float) g_vpos);
         editor.putFloat(KEY_HPOS, (float) g_hpos);
         editor.putFloat(KEY_BIAS_POS, (float) g_bias_pos);
