@@ -1,5 +1,4 @@
-![DroidOscillo host application for Android]
-(https://base-ec2.akamaized.net/images/item/origin/abc07da364d6632e0799de23561238fa.jpg)
+![DroidOscillo host application for Android](https://raw.githubusercontent.com/aroerina/DroidOscillo-Photos/master/do_host_app.jpg)
 
 ## Description
 DroidOscillo host application for Android
