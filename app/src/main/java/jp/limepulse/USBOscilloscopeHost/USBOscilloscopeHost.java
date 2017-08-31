@@ -1496,6 +1496,12 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         }
 
         TimeDivText.setText("Td:" + String.format("%5s", TIME_SCALE_LIST[timeDiv]));
+
+        // Flash time division text waveform area
+        if (enableFlashText) {
+            mGraph.setFlashText("Time/div = " + TIME_SCALE_LIST[timeDiv]);
+            blinkTextBG(TimeDivText, Color.GRAY);
+        }
     }
 
 
@@ -1615,6 +1621,8 @@ public class USBOscilloscopeHost extends Activity implements OnClickListener, On
         String s = String.format("%4s", scale);
 
         VoltDivText.setText("Vd:" + s);
+
+        // Flash volt division text waveform area
         if (enableFlashText) {
             mGraph.setFlashText("Volt/div = " + scale);
         }

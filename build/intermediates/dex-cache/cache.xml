@@ -7,17 +7,8 @@
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
-        sha1="4ca3d12e71f503db317f77458025ea329694874a">
+        sha1="458c2408905177ab33165bd624f0086d67525f92">
         <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10000\instant-run-bootstrap_a4da354f5f72d5622b89fe9448e471b944d72213\classes.dex" />
-    </item>
-    <item
-        is-multidex="false"
-        jar="C:\Dev\bin\Java\android_sdk\extras\android\m2repository\com\android\support\support-annotations\23.0.0\support-annotations-23.0.0.jar"
-        jumboMode="false"
-        optimize="true"
-        revision="25.0.1"
-        sha1="990e7f98a7bad86a40b1f0bcfeb039023afd0839">
-        <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\pre-dexed\debug\support-annotations-23.0.0_fa0e39433043427b714f8fe2768d45370319d458.jar" />
     </item>
     <item
         is-multidex="true"
@@ -25,7 +16,7 @@
         jumboMode="true"
         optimize="true"
         revision="25.0.1"
-        sha1="510aa6efc159983dfbffa676a0dae37568c0a46f">
+        sha1="3be78ebc2706b2e1fe2f12d5726887a92d6c183b">
         <dex dex="C:\Dev\project\Android_Oscilloscope\host_app\Android\USBOscilloscopeHost\app\build\intermediates\transforms\dex\debug\folders\1000\10000\instant-run_0b3a75b59d515420dde2b2587c1f0c749a08791a\classes.dex" />
     </item>
 
