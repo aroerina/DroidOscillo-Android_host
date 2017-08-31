@@ -12,5 +12,5 @@ proguard/
 .gradle
 app/build/
 build/
-.inspection
-._windows
+inspection/
+_windows/
