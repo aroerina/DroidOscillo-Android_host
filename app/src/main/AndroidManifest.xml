@@ -15,8 +15,8 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="jp.limepulse.USBOscilloscopeHost"
-      android:versionCode="27"
-      android:versionName="1.2.4">
+      android:versionCode="125"
+      android:versionName="1.2.5">
     <uses-sdk android:minSdkVersion="17"
         		android:targetSdkVersion="19"/>
     <uses-feature android:name="android.hardware.usb.host" />
